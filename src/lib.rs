@@ -6,6 +6,7 @@ use std::{convert::TryFrom, str};
 use combine::{
     byte::num::{be_i16, be_i32},
     error::StreamError,
+    optional,
     parser::{range, token::value},
     stream::StreamErrorFor,
     ParseError, Parser, RangeStream,
@@ -15,6 +16,7 @@ use api_key::ApiKey;
 
 pub mod api_key;
 pub mod error;
+mod parser;
 
 fn string<'i, I>() -> impl Parser<I, Output = &'i str>
 where
@@ -33,15 +35,20 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
+    nullable_bytes().and_then(|bs| {
+        bs.map(|bs| str::from_utf8(bs).map_err(StreamErrorFor::<I>::other))
+            .transpose()
+    })
+}
+
+fn nullable_bytes<'i, I>() -> impl Parser<I, Output = Option<&'i [u8]>>
+where
+    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
+{
     be_i16().then_partial(|&mut i| {
         if let Ok(i) = usize::try_from(i) {
-            range::take(i)
-                .and_then(|bs| {
-                    str::from_utf8(bs)
-                        .map(Some)
-                        .map_err(StreamErrorFor::<I>::other)
-                })
-                .left()
+            range::take(i).map(Some).left()
         } else {
             value(None).right()
         }

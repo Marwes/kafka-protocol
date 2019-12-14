@@ -8,4 +8,7 @@ edition = "2018"
 combine = "4.0.0-beta.1"
 
 [build-dependencies]
+combine = "4.0.0-beta.1"
 Inflector = "0.11"
+pretty = "0.7"
+serde_json = "1"
