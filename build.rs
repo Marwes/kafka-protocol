@@ -9,6 +9,7 @@ use combine::{
     parser::{char::spaces, range, token::value},
     sep_by1, token, EasyParser, ParseError, Parser, RangeStream,
 };
+use itertools::Itertools;
 use pretty::DocAllocator;
 
 type DocBuilder<'i> = pretty::DocBuilder<'i, pretty::Arena<'i, ()>>;
@@ -28,7 +29,8 @@ macro_rules! chain {
 struct Rule<'i> {
     name: &'i str,
     version: Option<i32>,
-    production: Production<'i>,
+    production: Vec<Elem<'i>>,
+    inner: Vec<Rule<'i>>,
 }
 
 #[derive(Debug)]
@@ -43,12 +45,6 @@ impl<'i> Elem<'i> {
             Elem::Optional(i) | Elem::Ident(i) => i,
         }
     }
-}
-
-#[derive(Debug)]
-enum Production<'i> {
-    Seq(Vec<Elem<'i>>, Vec<Rule<'i>>),
-    Leaf(&'i str),
 }
 
 fn write_parser<'i>(i: &'i str, arena: Arena<'i>) -> DocBuilder<'i> {
@@ -140,64 +136,63 @@ impl<'i> Rule<'i> {
             arena.line_(),
             arena.line_(),
             struct_doc,
-            arena.intersperse(structs, arena.hardline())
+            arena.hardline(),
+            arena.hardline(),
+            arena.intersperse(structs, arena.hardline().append(arena.hardline())),
         ];
         writeln!(out, "{}", doc.1.pretty(80))
     }
 
     fn generate(&self, name: &'i str, arena: Arena<'i>) -> DocBuilder<'i> {
         let name = inflector::cases::pascalcase::to_pascal_case(name);
-        match &self.production {
-            Production::Seq(elems, inner) => chain![arena;
+        chain![arena;
+            arena.line_(),
+            "(",
+            chain![arena;
                 arena.line_(),
-                "(",
-                chain![arena;
-                    arena.line_(),
-                    arena.intersperse(elems.iter().map(|elem| {
-                        match *elem {
-                            Elem::Optional(i) => {
-                                let inner = inner
-                                    .iter()
-                                    .find(|rule| rule.name == i)
-                                    .unwrap_or_else(|| panic!("Missing inner rule: {}", i));
-                                chain![arena;
-                                    "optional(",
-                                    inner.generate(i, arena),
-                                    ")",
-                                ]
-                            }
-                            Elem::Ident(i) => {
-                                let inner = match inner
-                                    .iter()
-                                    .find(|rule| rule.name == i)
-                                    .unwrap_or_else(|| panic!("Missing inner rule: {}", i))
-                                    .production
-                                {
-                                    Production::Leaf(i) => i,
-                                    _ => panic!(),
-                                };
-                                write_parser(inner, arena)
-                            }
+                arena.intersperse(self.production.iter().map(|elem| {
+                    match *elem {
+                        Elem::Optional(i) => {
+                            let inner = self.inner
+                                .iter()
+                                .find(|rule| rule.name == i)
+                                .unwrap_or_else(|| panic!("Missing inner rule: {}", i));
+                            chain![arena;
+                                "optional(",
+                                inner.generate(i, arena),
+                                "),",
+                            ]
                         }
-                    }), arena.line()),
-                ].nest(4),
-                arena.line_(),
-                ")",
-                ".map(|(",
-                arena.intersperse(elems.iter().map(|e| e.name()), arena.text(",")),
-                ")| {",
-                chain![arena;
-                    name,
-                    "{",
-                    arena.line(),
-                    arena.intersperse(elems.iter().map(|e| e.name()), arena.text(",")),
-                    arena.line(),
-                    "}",
-                ],
-                "})",
+                        Elem::Ident(i) => {
+                            let inner = match self.inner
+                                .iter()
+                                .find(|rule| rule.name == i)
+                                .and_then(|rule| rule
+                                .production.first())
+                            {
+                                Some(i) => i.name(),
+                                None => i,
+                            };
+                            write_parser(inner, arena)
+                        }
+                    }
+                }), arena.line()),
+            ].nest(4),
+            arena.line_(),
+            ")",
+            ".map(|(",
+            arena.intersperse(self.production.iter().map(|e| e.name()), arena.text(",")),
+            ")| {",
+            chain![arena;
+                name,
+                "{",
+                arena.line(),
+                arena.intersperse(self.production.iter().map(|e| e.name()), arena.text(",")),
+                arena.line(),
+                "}",
             ],
-            Production::Leaf(i) => write_parser(i, arena),
-        }
+            "})",
+        ]
     }
 
     fn generate_struct(
@@ -218,47 +213,55 @@ impl<'i> Rule<'i> {
     }
 
     fn generate_fields(&self, out: &mut Vec<DocBuilder<'i>>, arena: Arena<'i>) -> DocBuilder<'i> {
-        match &self.production {
-            Production::Seq(elems, inner) => chain![arena;
-                arena.line_(),
-                arena.intersperse(elems.iter().map(|elem| {
-                    match *elem {
-                        Elem::Optional(i) => {
-                            let inner = inner
-                                .iter()
-                                .find(|rule| rule.name == i)
-                                .unwrap_or_else(|| panic!("Missing inner rule: {}", i));
-                            let struct_doc = inner.generate_struct(i, out, arena);
-                            out.push(struct_doc);
-                            chain![arena;
-                                i,
-                                ":",
-                                arena.line(),
-                                "Option<",
-                                inflector::cases::pascalcase::to_pascal_case(i),
-                                "<'i>",
-                                ">",
-                            ].group()
-                        }
-                        Elem::Ident(i) => {
-                            let inner = match inner
-                                .iter()
-                                .find(|rule| rule.name == i)
-                                .unwrap_or_else(|| panic!("Missing inner rule: {}", i))
-                                .production
-                            {
-                                Production::Leaf(i) => i,
-                                _ => panic!(),
-                            };
-                            write_field(i, inner, arena)
-                        }
+        chain![arena;
+            arena.line_(),
+            arena.intersperse(self.production.iter().map(|elem| {
+                match *elem {
+                    Elem::Optional(i) => {
+                        let inner = self
+                            .inner
+                            .iter()
+                            .find(|rule| rule.name == i)
+                            .unwrap_or_else(|| panic!("Missing inner rule: {}", i));
+                        let struct_doc = inner.generate_struct(i, out, arena);
+                        out.push(struct_doc);
+                        chain![arena;
+                            i,
+                            ":",
+                            arena.line(),
+                            "Option<",
+                            inflector::cases::pascalcase::to_pascal_case(i),
+                            "<'i>",
+                            ">,",
+                        ].group()
                     }
-                }), arena.line()),
-            ]
-            .nest(4),
-            Production::Leaf(i) => write_field(i, i, arena),
-        }
+                    Elem::Ident(i) => {
+                        let inner = match self.inner
+                            .iter()
+                            .find(|rule| rule.name == i)
+                            .and_then(|rule|
+                            rule.production.first())
+                        {
+                            Some(i) => i.name(),
+                            None => i,
+                        };
+                        write_field(i, inner, arena)
+                    }
+                }
+            }), arena.line()),
+        ]
+        .nest(4)
     }
+}
+
+fn ident<'i, I>() -> impl Parser<I, Output = &'i str>
+where
+    I: RangeStream<Token = char, Range = &'i str>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
+{
+    range::take_while1(|c: char| c.is_alphanumeric() || c == '_' || c == '\'')
+        .map(|s: &str| s.trim_end_matches('\''))
+        .expected("identifier")
 }
 
 fn elem<'i, I>() -> impl Parser<I, Output = Elem<'i>>
@@ -266,49 +269,33 @@ where
     I: RangeStream<Token = char, Range = &'i str>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    let ident =
-        || range::take_while1(|c: char| c.is_alphanumeric() || c == '_').expected("identifier");
     between(token('['), token(']'), ident())
         .map(Elem::Optional)
         .or(ident().map(Elem::Ident))
 }
 
-fn production<'i, I>() -> impl Parser<I, Output = Production<'i>>
+fn production<'i, I>() -> impl Parser<I, Output = Vec<Elem<'i>>>
 where
     I: RangeStream<Token = char, Range = &'i str>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        elem(),
-        optional((
-            token(' '),
-            many1(elem().skip(optional(token(' ')))),
-            spaces(),
-            many(rule().skip(spaces())),
-        )),
+        many(elem().skip(optional(token(' ')))),
         optional(token(' ')),
     )
-        .map(|(first, elems, _)| match elems {
-            Some((_, elems, _, inner)) => {
-                let mut elems: Vec<_> = elems;
-                elems.insert(0, first);
-                Production::Seq(elems, inner)
-            }
-            None => match first {
-                Elem::Ident(i) | Elem::Optional(i) => Production::Leaf(i),
-            },
-        })
+        .map(|(elems, _)| elems)
 }
 
 combine::parser! {
-fn rule['i, I]()(I) -> Rule<'i>
+fn rule['i, I]()(I) -> (usize, Rule<'i>)
 where [
     I: RangeStream<Token = char, Range = &'i str>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 ]
 {
     (
-        range::take_while1(|c: char| c != '=' && c != '(').map(|s| { eprintln!("{:?}", s); str::trim(s) }),
+        range::take_while(|c: char| c == ' '),
+        range::take_while1(|c: char| c != '=' && c != '(').map(str::trim).map(|s: &str| s.trim_end_matches('\'')),
         optional(between(
                 token('('),
                 token(')'),
@@ -320,27 +307,64 @@ where [
         spaces(),
         range::range("=>").skip(spaces()),
         production(),
-    )
-        .map(|(name, version, _, _, production)| Rule { name, version, production })
+    ).skip(optional(token('\n')))
+        .map(|(level, name, version, _, _, production): (&str, _, _, _, _, _)| (level.len(), Rule { name, version, production, inner: Vec::new(), }))
 }
 }
 
 fn main() -> io::Result<()> {
     {
         let mut out = io::BufWriter::new(fs::File::create("src/parser.rs")?);
-        for (i, input) in serde_json::from_str::<Vec<String>>(&fs::read_to_string(
+        let inputs = serde_json::from_str::<Vec<String>>(&fs::read_to_string(
             "kafka_request_responses.json",
         )?)
-        .unwrap()
-        .into_iter()
-        .enumerate()
-        {
-            eprintln!("Input {}: {}", i, input);
-            let (rule, _) = rule()
-                .easy_parse(&input[..])
-                .map_err(|err| err.map_position(|p| p.translate_position(&input[..])))
-                .unwrap_or_else(|err| panic!("{}", err));
+        .unwrap();
 
+        let rules = inputs
+            .iter()
+            .enumerate()
+            .map(|(i, input)| -> io::Result<_> {
+                eprintln!("Input {}: {}", i, input);
+                let (rules, _) = many1(rule())
+                    .easy_parse(&input[..])
+                    .map_err(|err| err.map_position(|p| p.translate_position(&input[..])))
+                    .unwrap_or_else(|err| panic!("{}", err));
+
+                fn fixup<'i>(
+                    current: &mut Vec<Rule<'i>>,
+                    level: usize,
+                    rules: &mut impl Iterator<Item = (usize, Rule<'i>)>,
+                ) -> Option<(usize, Rule<'i>)> {
+                    let mut x = rules.next();
+                    loop {
+                        let (next_level, next) = x?;
+                        x = if next_level == level || current.is_empty() {
+                            current.push(next);
+                            fixup(current, level, rules)
+                        } else if next_level > level {
+                            let current = &mut current.last_mut().expect("Rule").inner;
+                            current.push(next);
+                            fixup(current, next_level, rules)
+                        } else {
+                            return Some((next_level, next));
+                        }
+                    }
+                }
+
+                let mut current = Vec::new();
+                fixup(&mut current, 0, &mut Vec::into_iter(rules));
+                assert_eq!(current.len(), 1);
+                let rule = current.pop().unwrap();
+                Ok(rule)
+            })
+            .collect::<io::Result<Vec<_>>>()?;
+
+        for rule in rules
+            .into_iter()
+            .group_by(|rule| rule.name)
+            .into_iter()
+            .map(|iter| iter.1.last().unwrap())
+        {
             eprintln!("{:#?}", rule);
             let mut s = Vec::new();
             rule.generate_fn(&mut s)?;
