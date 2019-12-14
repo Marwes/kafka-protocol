@@ -1,0 +1,11 @@
+[package]
+name = "kafka-protocol"
+version = "0.1.0"
+authors = ["Markus Westerlind <marwes91@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+combine = "4.0.0-beta.1"
+
+[build-dependencies]
+Inflector = "0.11"
