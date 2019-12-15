@@ -7,7 +7,7 @@ where
 {
     (
         be_i16(),
-        optional(
+        many(
             (
                 (string(), string()).map(|(principal_type, name)| Owner {
                     principal_type,
@@ -18,7 +18,7 @@ where
                 be_i64(),
                 string(),
                 bytes(),
-                optional((string(), string()).map(|(principal_type, name)| Renewers {
+                many((string(), string()).map(|(principal_type, name)| Renewers {
                     principal_type,
                     name,
                 })),
@@ -59,8 +59,21 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct DescribeDelegationTokenResponse<'i> {
     pub error_code: i16,
-    pub token_details: Option<TokenDetails<'i>>,
+    pub token_details: Vec<TokenDetails<'i>>,
     pub throttle_time_ms: i32,
+}
+
+impl<'i> crate::Encode for DescribeDelegationTokenResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.error_code.encode_len()
+            + self.token_details.encode_len()
+            + self.throttle_time_ms.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.error_code.encode(writer);
+        self.token_details.encode(writer);
+        self.throttle_time_ms.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -69,10 +82,30 @@ pub struct Owner<'i> {
     pub name: &'i str,
 }
 
+impl<'i> crate::Encode for Owner<'i> {
+    fn encode_len(&self) -> usize {
+        self.principal_type.encode_len() + self.name.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.principal_type.encode(writer);
+        self.name.encode(writer);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Renewers<'i> {
     pub principal_type: &'i str,
     pub name: &'i str,
+}
+
+impl<'i> crate::Encode for Renewers<'i> {
+    fn encode_len(&self) -> usize {
+        self.principal_type.encode_len() + self.name.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.principal_type.encode(writer);
+        self.name.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -83,5 +116,26 @@ pub struct TokenDetails<'i> {
     pub max_timestamp: i64,
     pub token_id: &'i str,
     pub hmac: &'i [u8],
-    pub renewers: Option<Renewers<'i>>,
+    pub renewers: Vec<Renewers<'i>>,
+}
+
+impl<'i> crate::Encode for TokenDetails<'i> {
+    fn encode_len(&self) -> usize {
+        self.owner.encode_len()
+            + self.issue_timestamp.encode_len()
+            + self.expiry_timestamp.encode_len()
+            + self.max_timestamp.encode_len()
+            + self.token_id.encode_len()
+            + self.hmac.encode_len()
+            + self.renewers.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.owner.encode(writer);
+        self.issue_timestamp.encode(writer);
+        self.expiry_timestamp.encode(writer);
+        self.max_timestamp.encode(writer);
+        self.token_id.encode(writer);
+        self.hmac.encode(writer);
+        self.renewers.encode(writer);
+    }
 }

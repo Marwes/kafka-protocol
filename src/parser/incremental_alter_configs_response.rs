@@ -7,7 +7,7 @@ where
 {
     (
         be_i32(),
-        optional((be_i16(), nullable_string(), be_i8(), string()).map(
+        many((be_i16(), nullable_string(), be_i8(), string()).map(
             |(error_code, error_message, resource_type, resource_name)| Responses {
                 error_code,
                 error_message,
@@ -27,7 +27,17 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct IncrementalAlterConfigsResponse<'i> {
     pub throttle_time_ms: i32,
-    pub responses: Option<Responses<'i>>,
+    pub responses: Vec<Responses<'i>>,
+}
+
+impl<'i> crate::Encode for IncrementalAlterConfigsResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len() + self.responses.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.responses.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -36,4 +46,19 @@ pub struct Responses<'i> {
     pub error_message: Option<&'i str>,
     pub resource_type: i8,
     pub resource_name: &'i str,
+}
+
+impl<'i> crate::Encode for Responses<'i> {
+    fn encode_len(&self) -> usize {
+        self.error_code.encode_len()
+            + self.error_message.encode_len()
+            + self.resource_type.encode_len()
+            + self.resource_name.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.error_code.encode(writer);
+        self.error_message.encode(writer);
+        self.resource_type.encode(writer);
+        self.resource_name.encode(writer);
+    }
 }

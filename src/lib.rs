@@ -1,14 +1,14 @@
 #[macro_use]
 extern crate combine;
 
-use std::{convert::TryFrom, str};
+use std::{convert::TryFrom, mem, str};
 
 use combine::{
     byte::num::{be_i16, be_i32, be_i64},
     error::StreamError,
     parser::{
-        choice::optional,
         range,
+        repeat::many,
         token::{any, value},
     },
     stream::StreamErrorFor,
@@ -98,10 +98,106 @@ where
     }
 }
 
-/// Various errors reported by a remote Kafka server.
-/// See also [Kafka Errors](http://kafka.apache.org/protocol.html)
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ErrorCode {}
+pub trait Encode {
+    fn encode_len(&self) -> usize;
+    fn encode(&self, writer: &mut impl bytes::BufMut);
+}
+
+macro_rules! encode_impl {
+    ($($ty: ty, $method: ident, )*) => {$(
+        impl Encode for $ty {
+            fn encode_len(&self) -> usize {
+                mem::size_of::<Self>()
+            }
+
+            fn encode(&self, writer: &mut impl bytes::BufMut) {
+                writer.$method(*self);
+            }
+        }
+    )*};
+}
+
+encode_impl! {
+    i8, put_i8,
+    i16, put_i16,
+    i32, put_i32,
+    i64, put_i64,
+}
+
+impl<T> Encode for Vec<T>
+where
+    T: Encode,
+{
+    fn encode_len(&self) -> usize {
+        mem::size_of::<i32>() + self.iter().map(|elem| elem.encode_len()).sum::<usize>()
+    }
+
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        let l = i32::try_from(self.len()).unwrap();
+        l.encode(writer);
+        for elem in self {
+            elem.encode(writer);
+        }
+    }
+}
+
+impl Encode for Option<&'_ [u8]> {
+    fn encode_len(&self) -> usize {
+        match self {
+            Some(t) => t.encode_len(),
+            None => (-1i16).encode_len(),
+        }
+    }
+
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        match self {
+            Some(t) => t.encode(writer),
+            None => (-1i16).encode(writer),
+        }
+    }
+}
+
+impl Encode for Option<&'_ str> {
+    fn encode_len(&self) -> usize {
+        self.as_ref().map(|s| s.as_bytes()).encode_len()
+    }
+
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.as_ref().map(|s| s.as_bytes()).encode(writer)
+    }
+}
+
+impl Encode for &'_ [u8] {
+    fn encode_len(&self) -> usize {
+        mem::size_of::<i32>() + self.len()
+    }
+
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        let l = i32::try_from(self.len()).unwrap();
+        l.encode(writer);
+        writer.put(*self);
+    }
+}
+
+impl Encode for &'_ str {
+    fn encode_len(&self) -> usize {
+        self.as_bytes().encode_len()
+    }
+
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.as_bytes().encode(writer)
+    }
+}
+
+impl Encode for bool {
+    fn encode_len(&self) -> usize {
+        1
+    }
+
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        writer.put_u8(*self as u8);
+    }
+}
 
 #[cfg(test)]
 mod tests {

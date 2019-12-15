@@ -17,3 +17,13 @@ pub struct InitProducerIdRequest<'i> {
     pub transactional_id: Option<&'i str>,
     pub transaction_timeout_ms: i32,
 }
+
+impl<'i> crate::Encode for InitProducerIdRequest<'i> {
+    fn encode_len(&self) -> usize {
+        self.transactional_id.encode_len() + self.transaction_timeout_ms.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.transactional_id.encode(writer);
+        self.transaction_timeout_ms.encode(writer);
+    }
+}

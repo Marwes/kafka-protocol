@@ -6,7 +6,7 @@ where
 {
     (
         be_i32(),
-        optional((string(), be_i16()).map(|(name, error_code)| Responses { name, error_code })),
+        many((string(), be_i16()).map(|(name, error_code)| Responses { name, error_code })),
     )
         .map(|(throttle_time_ms, responses)| DeleteTopicsResponse {
             throttle_time_ms,
@@ -17,11 +17,31 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct DeleteTopicsResponse<'i> {
     pub throttle_time_ms: i32,
-    pub responses: Option<Responses<'i>>,
+    pub responses: Vec<Responses<'i>>,
+}
+
+impl<'i> crate::Encode for DeleteTopicsResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len() + self.responses.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.responses.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Responses<'i> {
     pub name: &'i str,
     pub error_code: i16,
+}
+
+impl<'i> crate::Encode for Responses<'i> {
+    fn encode_len(&self) -> usize {
+        self.name.encode_len() + self.error_code.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.name.encode(writer);
+        self.error_code.encode(writer);
+    }
 }

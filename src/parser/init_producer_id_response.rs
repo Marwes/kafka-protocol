@@ -21,3 +21,18 @@ pub struct InitProducerIdResponse {
     pub producer_id: i64,
     pub producer_epoch: i16,
 }
+
+impl crate::Encode for InitProducerIdResponse {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len()
+            + self.error_code.encode_len()
+            + self.producer_id.encode_len()
+            + self.producer_epoch.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.error_code.encode(writer);
+        self.producer_id.encode(writer);
+        self.producer_epoch.encode(writer);
+    }
+}

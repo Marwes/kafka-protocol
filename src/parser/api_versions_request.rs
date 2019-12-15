@@ -9,3 +9,10 @@ where
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ApiVersionsRequest {}
+
+impl crate::Encode for ApiVersionsRequest {
+    fn encode_len(&self) -> usize {
+        0
+    }
+    fn encode(&self, _: &mut impl bytes::BufMut) {}
+}

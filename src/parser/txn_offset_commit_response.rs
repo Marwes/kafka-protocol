@@ -6,10 +6,10 @@ where
 {
     (
         be_i32(),
-        optional(
+        many(
             (
                 string(),
-                optional(
+                many(
                     (be_i32(), be_i16()).map(|(partition, error_code)| Partitions {
                         partition,
                         error_code,
@@ -28,7 +28,17 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct TxnOffsetCommitResponse<'i> {
     pub throttle_time_ms: i32,
-    pub topics: Option<Topics<'i>>,
+    pub topics: Vec<Topics<'i>>,
+}
+
+impl<'i> crate::Encode for TxnOffsetCommitResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len() + self.topics.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.topics.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -37,8 +47,28 @@ pub struct Partitions {
     pub error_code: i16,
 }
 
+impl crate::Encode for Partitions {
+    fn encode_len(&self) -> usize {
+        self.partition.encode_len() + self.error_code.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.partition.encode(writer);
+        self.error_code.encode(writer);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Topics<'i> {
     pub topic: &'i str,
-    pub partitions: Option<Partitions>,
+    pub partitions: Vec<Partitions>,
+}
+
+impl<'i> crate::Encode for Topics<'i> {
+    fn encode_len(&self) -> usize {
+        self.topic.encode_len() + self.partitions.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.topic.encode(writer);
+        self.partitions.encode(writer);
+    }
 }

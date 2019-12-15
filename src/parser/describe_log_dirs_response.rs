@@ -6,14 +6,14 @@ where
 {
     (
         be_i32(),
-        optional(
+        many(
             (
                 be_i16(),
                 string(),
-                optional(
+                many(
                     (
                         string(),
-                        optional((be_i32(), be_i64(), be_i64(), any().map(|b| b != 0)).map(
+                        many((be_i32(), be_i64(), be_i64(), any().map(|b| b != 0)).map(
                             |(partition, size, offset_lag, is_future)| Partitions {
                                 partition,
                                 size,
@@ -41,7 +41,17 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct DescribeLogDirsResponse<'i> {
     pub throttle_time_ms: i32,
-    pub log_dirs: Option<LogDirs<'i>>,
+    pub log_dirs: Vec<LogDirs<'i>>,
+}
+
+impl<'i> crate::Encode for DescribeLogDirsResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len() + self.log_dirs.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.log_dirs.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -52,15 +62,51 @@ pub struct Partitions {
     pub is_future: bool,
 }
 
+impl crate::Encode for Partitions {
+    fn encode_len(&self) -> usize {
+        self.partition.encode_len()
+            + self.size.encode_len()
+            + self.offset_lag.encode_len()
+            + self.is_future.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.partition.encode(writer);
+        self.size.encode(writer);
+        self.offset_lag.encode(writer);
+        self.is_future.encode(writer);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Topics<'i> {
     pub topic: &'i str,
-    pub partitions: Option<Partitions>,
+    pub partitions: Vec<Partitions>,
+}
+
+impl<'i> crate::Encode for Topics<'i> {
+    fn encode_len(&self) -> usize {
+        self.topic.encode_len() + self.partitions.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.topic.encode(writer);
+        self.partitions.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LogDirs<'i> {
     pub error_code: i16,
     pub log_dir: &'i str,
-    pub topics: Option<Topics<'i>>,
+    pub topics: Vec<Topics<'i>>,
+}
+
+impl<'i> crate::Encode for LogDirs<'i> {
+    fn encode_len(&self) -> usize {
+        self.error_code.encode_len() + self.log_dir.encode_len() + self.topics.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.error_code.encode(writer);
+        self.log_dir.encode(writer);
+        self.topics.encode(writer);
+    }
 }

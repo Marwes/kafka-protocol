@@ -15,3 +15,13 @@ pub struct AddOffsetsToTxnResponse {
     pub throttle_time_ms: i32,
     pub error_code: i16,
 }
+
+impl crate::Encode for AddOffsetsToTxnResponse {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len() + self.error_code.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.error_code.encode(writer);
+    }
+}

@@ -4,7 +4,7 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (be_i16(), optional(string())).map(|(error_code, mechanisms)| SaslHandshakeResponse {
+    (be_i16(), many(string())).map(|(error_code, mechanisms)| SaslHandshakeResponse {
         error_code,
         mechanisms,
     })
@@ -13,5 +13,15 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct SaslHandshakeResponse<'i> {
     pub error_code: i16,
-    pub mechanisms: Option<&'i str>,
+    pub mechanisms: Vec<&'i str>,
+}
+
+impl<'i> crate::Encode for SaslHandshakeResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.error_code.encode_len() + self.mechanisms.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.error_code.encode(writer);
+        self.mechanisms.encode(writer);
+    }
 }

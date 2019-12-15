@@ -18,14 +18,15 @@ mod regenerate {
     type Arena<'i> = &'i pretty::Arena<'i, ()>;
 
     macro_rules! chain {
-    ($alloc: expr; $first: expr, $($rest: expr),+ $(,)?) => {{
-        let mut doc = ::pretty::DocBuilder($alloc, $first.into());
-        $(
-            doc = doc.append($rest);
-        )*
-        doc
-    }}
-}
+    ($alloc: expr; $first: expr, $($rest: expr),* $(,)?) => {{
+            #[allow(unused_mut)]
+            let mut doc = ::pretty::DocBuilder($alloc, $first.into());
+            $(
+                doc = doc.append($rest);
+            )*
+            doc
+        }}
+    }
 
     #[derive(Debug)]
     struct Rule<'i> {
@@ -37,14 +38,14 @@ mod regenerate {
 
     #[derive(Debug)]
     enum Elem<'i> {
-        Optional(&'i str),
+        Multi(&'i str),
         Ident(&'i str),
     }
 
     impl<'i> Elem<'i> {
         fn name(&self) -> &'i str {
             match *self {
-                Elem::Optional(i) | Elem::Ident(i) => i,
+                Elem::Multi(i) | Elem::Ident(i) => i,
             }
         }
     }
@@ -173,13 +174,13 @@ mod regenerate {
                     arena.line_(),
                     arena.intersperse(self.production.iter().map(|elem| {
                         match *elem {
-                            Elem::Optional(i) => {
+                            Elem::Multi(i) => {
                                 let inner = self.inner
                                     .iter()
                                     .find(|rule| rule.name == i)
                                     .unwrap_or_else(|| panic!("Missing inner rule: {}", i));
                                 chain![arena;
-                                    "optional(",
+                                    "many(",
                                     inner.generate(i, arena),
                                     ",",
                                     "),",
@@ -248,6 +249,53 @@ mod regenerate {
                 self.generate_fields(out, arena),
                 arena.line_(),
                 "}",
+                arena.line_(),
+                arena.line_(),
+                "impl",
+                self.lifetime(),
+                " crate::Encode for ",
+                inflector::cases::pascalcase::to_pascal_case(name),
+                self.lifetime(),
+                "{",
+                chain![arena;
+                    arena.line_(),
+                    "fn encode_len(&self) -> usize {",
+                    chain![arena;
+                        arena.line_(),
+                        if self.production.is_empty() {
+                            arena.text("0")
+                        } else {
+                            arena.intersperse(self.production.iter().map(|elem| {
+                                chain![arena;
+                                    "self.",
+                                    elem.name(),
+                                    ".encode_len()",
+                                ]
+                            }), arena.text(" + "))
+                        }
+                    ].nest(4),
+                    "}",
+                    arena.line_(),
+                    "fn encode(&self, ",
+                    if self.production.is_empty() {
+                        "_"
+                    } else {
+                        "writer"
+                    },
+                    ": &mut impl bytes::BufMut) {",
+                    chain![arena;
+                        arena.line_(),
+                        arena.intersperse(self.production.iter().map(|elem| {
+                            chain![arena;
+                                "self.",
+                                elem.name(),
+                                ".encode(writer);",
+                            ]
+                        }), arena.line()),
+                    ].nest(4),
+                    "}",
+                ].nest(4),
+                "}",
             ]
         }
 
@@ -260,7 +308,7 @@ mod regenerate {
                 arena.line_(),
                 arena.intersperse(self.production.iter().map(|elem| {
                     match *elem {
-                        Elem::Optional(i) => {
+                        Elem::Multi(i) => {
                             let inner = self
                                 .inner
                                 .iter()
@@ -277,7 +325,7 @@ mod regenerate {
                                     i,
                                     ":",
                                     arena.line_(),
-                                    "Option<",
+                                    "Vec<",
                                     ty,
                                     ">,",
                                 ]
@@ -291,7 +339,7 @@ mod regenerate {
                                 i,
                                 ":",
                                 arena.line(),
-                                "Option<",
+                                "Vec<",
                                 inflector::cases::pascalcase::to_pascal_case(i),
                                 inner.lifetime(),
                                 ">,",
@@ -362,7 +410,7 @@ mod regenerate {
         .map(|s: &str| s.trim_end_matches('\''))
         .expected("identifier or array");
         between(token('['), token(']'), ident())
-            .map(Elem::Optional)
+            .map(Elem::Multi)
             .or(ident_or_array.map(Elem::Ident))
     }
 

@@ -15,3 +15,13 @@ pub struct ControlledShutdownRequest {
     pub broker_id: i32,
     pub broker_epoch: i64,
 }
+
+impl crate::Encode for ControlledShutdownRequest {
+    fn encode_len(&self) -> usize {
+        self.broker_id.encode_len() + self.broker_epoch.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.broker_id.encode(writer);
+        self.broker_epoch.encode(writer);
+    }
+}

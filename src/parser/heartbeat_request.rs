@@ -21,3 +21,18 @@ pub struct HeartbeatRequest<'i> {
     pub member_id: &'i str,
     pub group_instance_id: Option<&'i str>,
 }
+
+impl<'i> crate::Encode for HeartbeatRequest<'i> {
+    fn encode_len(&self) -> usize {
+        self.group_id.encode_len()
+            + self.generation_id.encode_len()
+            + self.member_id.encode_len()
+            + self.group_instance_id.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.group_id.encode(writer);
+        self.generation_id.encode(writer);
+        self.member_id.encode(writer);
+        self.group_instance_id.encode(writer);
+    }
+}

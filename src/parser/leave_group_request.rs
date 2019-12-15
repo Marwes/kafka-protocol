@@ -15,3 +15,13 @@ pub struct LeaveGroupRequest<'i> {
     pub group_id: &'i str,
     pub member_id: &'i str,
 }
+
+impl<'i> crate::Encode for LeaveGroupRequest<'i> {
+    fn encode_len(&self) -> usize {
+        self.group_id.encode_len() + self.member_id.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.group_id.encode(writer);
+        self.member_id.encode(writer);
+    }
+}

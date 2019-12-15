@@ -11,3 +11,12 @@ where
 pub struct SaslHandshakeRequest<'i> {
     pub mechanism: &'i str,
 }
+
+impl<'i> crate::Encode for SaslHandshakeRequest<'i> {
+    fn encode_len(&self) -> usize {
+        self.mechanism.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.mechanism.encode(writer);
+    }
+}

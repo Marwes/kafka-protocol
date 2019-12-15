@@ -6,7 +6,7 @@ where
 {
     (
         be_i16(),
-        optional(
+        many(
             (string(), be_i32(), be_i16()).map(|(topic, partition, error_code)| Partitions {
                 topic,
                 partition,
@@ -23,7 +23,17 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct StopReplicaResponse<'i> {
     pub error_code: i16,
-    pub partitions: Option<Partitions<'i>>,
+    pub partitions: Vec<Partitions<'i>>,
+}
+
+impl<'i> crate::Encode for StopReplicaResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.error_code.encode_len() + self.partitions.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.error_code.encode(writer);
+        self.partitions.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -31,4 +41,15 @@ pub struct Partitions<'i> {
     pub topic: &'i str,
     pub partition: i32,
     pub error_code: i16,
+}
+
+impl<'i> crate::Encode for Partitions<'i> {
+    fn encode_len(&self) -> usize {
+        self.topic.encode_len() + self.partition.encode_len() + self.error_code.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.topic.encode(writer);
+        self.partition.encode(writer);
+        self.error_code.encode(writer);
+    }
 }

@@ -6,7 +6,7 @@ where
 {
     (
         be_i32(),
-        optional(
+        many(
             (string(), be_i16()).map(|(group_id, error_code)| GroupErrorCodes {
                 group_id,
                 error_code,
@@ -24,11 +24,31 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct DeleteGroupsResponse<'i> {
     pub throttle_time_ms: i32,
-    pub group_error_codes: Option<GroupErrorCodes<'i>>,
+    pub group_error_codes: Vec<GroupErrorCodes<'i>>,
+}
+
+impl<'i> crate::Encode for DeleteGroupsResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len() + self.group_error_codes.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.group_error_codes.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct GroupErrorCodes<'i> {
     pub group_id: &'i str,
     pub error_code: i16,
+}
+
+impl<'i> crate::Encode for GroupErrorCodes<'i> {
+    fn encode_len(&self) -> usize {
+        self.group_id.encode_len() + self.error_code.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.group_id.encode(writer);
+        self.error_code.encode(writer);
+    }
 }

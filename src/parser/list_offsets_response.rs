@@ -6,10 +6,10 @@ where
 {
     (
         be_i32(),
-        optional(
+        many(
             (
                 string(),
-                optional((be_i32(), be_i16(), be_i64(), be_i64(), be_i32()).map(
+                many((be_i32(), be_i16(), be_i64(), be_i64(), be_i32()).map(
                     |(partition, error_code, timestamp, offset, leader_epoch)| PartitionResponses {
                         partition,
                         error_code,
@@ -34,7 +34,17 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct ListOffsetsResponse<'i> {
     pub throttle_time_ms: i32,
-    pub responses: Option<Responses<'i>>,
+    pub responses: Vec<Responses<'i>>,
+}
+
+impl<'i> crate::Encode for ListOffsetsResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len() + self.responses.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.responses.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -46,8 +56,35 @@ pub struct PartitionResponses {
     pub leader_epoch: i32,
 }
 
+impl crate::Encode for PartitionResponses {
+    fn encode_len(&self) -> usize {
+        self.partition.encode_len()
+            + self.error_code.encode_len()
+            + self.timestamp.encode_len()
+            + self.offset.encode_len()
+            + self.leader_epoch.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.partition.encode(writer);
+        self.error_code.encode(writer);
+        self.timestamp.encode(writer);
+        self.offset.encode(writer);
+        self.leader_epoch.encode(writer);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Responses<'i> {
     pub topic: &'i str,
-    pub partition_responses: Option<PartitionResponses>,
+    pub partition_responses: Vec<PartitionResponses>,
+}
+
+impl<'i> crate::Encode for Responses<'i> {
+    fn encode_len(&self) -> usize {
+        self.topic.encode_len() + self.partition_responses.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.topic.encode(writer);
+        self.partition_responses.encode(writer);
+    }
 }

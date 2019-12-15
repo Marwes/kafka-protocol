@@ -20,3 +20,16 @@ pub struct RenewDelegationTokenResponse {
     pub expiry_timestamp: i64,
     pub throttle_time_ms: i32,
 }
+
+impl crate::Encode for RenewDelegationTokenResponse {
+    fn encode_len(&self) -> usize {
+        self.error_code.encode_len()
+            + self.expiry_timestamp.encode_len()
+            + self.throttle_time_ms.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.error_code.encode(writer);
+        self.expiry_timestamp.encode(writer);
+        self.throttle_time_ms.encode(writer);
+    }
+}

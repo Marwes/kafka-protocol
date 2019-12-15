@@ -11,7 +11,7 @@ where
         string(),
         string(),
         string(),
-        optional((string(), nullable_string(), bytes()).map(
+        many((string(), nullable_string(), bytes()).map(
             |(member_id, group_instance_id, metadata)| Members {
                 member_id,
                 group_instance_id,
@@ -50,7 +50,28 @@ pub struct JoinGroupResponse<'i> {
     pub protocol_name: &'i str,
     pub leader: &'i str,
     pub member_id: &'i str,
-    pub members: Option<Members<'i>>,
+    pub members: Vec<Members<'i>>,
+}
+
+impl<'i> crate::Encode for JoinGroupResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len()
+            + self.error_code.encode_len()
+            + self.generation_id.encode_len()
+            + self.protocol_name.encode_len()
+            + self.leader.encode_len()
+            + self.member_id.encode_len()
+            + self.members.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.error_code.encode(writer);
+        self.generation_id.encode(writer);
+        self.protocol_name.encode(writer);
+        self.leader.encode(writer);
+        self.member_id.encode(writer);
+        self.members.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -58,4 +79,17 @@ pub struct Members<'i> {
     pub member_id: &'i str,
     pub group_instance_id: Option<&'i str>,
     pub metadata: &'i [u8],
+}
+
+impl<'i> crate::Encode for Members<'i> {
+    fn encode_len(&self) -> usize {
+        self.member_id.encode_len()
+            + self.group_instance_id.encode_len()
+            + self.metadata.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.member_id.encode(writer);
+        self.group_instance_id.encode(writer);
+        self.metadata.encode(writer);
+    }
 }

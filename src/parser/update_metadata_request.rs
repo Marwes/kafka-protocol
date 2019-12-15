@@ -8,19 +8,19 @@ where
         be_i32(),
         be_i32(),
         be_i64(),
-        optional(
+        many(
             (
                 string(),
-                optional(
+                many(
                     (
                         be_i32(),
                         be_i32(),
                         be_i32(),
                         be_i32(),
-                        optional(be_i32()),
+                        many(be_i32()),
                         be_i32(),
-                        optional(be_i32()),
-                        optional(be_i32()),
+                        many(be_i32()),
+                        many(be_i32()),
                     )
                         .map(
                             |(
@@ -52,10 +52,10 @@ where
                     partition_states,
                 }),
         ),
-        optional(
+        many(
             (
                 be_i32(),
-                optional((be_i32(), string(), string(), be_i16()).map(
+                many((be_i32(), string(), string(), be_i16()).map(
                     |(port, host, listener_name, security_protocol_type)| EndPoints {
                         port,
                         host,
@@ -90,8 +90,25 @@ pub struct UpdateMetadataRequest<'i> {
     pub controller_id: i32,
     pub controller_epoch: i32,
     pub broker_epoch: i64,
-    pub topic_states: Option<TopicStates<'i>>,
-    pub live_brokers: Option<LiveBrokers<'i>>,
+    pub topic_states: Vec<TopicStates<'i>>,
+    pub live_brokers: Vec<LiveBrokers<'i>>,
+}
+
+impl<'i> crate::Encode for UpdateMetadataRequest<'i> {
+    fn encode_len(&self) -> usize {
+        self.controller_id.encode_len()
+            + self.controller_epoch.encode_len()
+            + self.broker_epoch.encode_len()
+            + self.topic_states.encode_len()
+            + self.live_brokers.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.controller_id.encode(writer);
+        self.controller_epoch.encode(writer);
+        self.broker_epoch.encode(writer);
+        self.topic_states.encode(writer);
+        self.live_brokers.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -100,16 +117,49 @@ pub struct PartitionStates {
     pub controller_epoch: i32,
     pub leader: i32,
     pub leader_epoch: i32,
-    pub isr: Option<i32>,
+    pub isr: Vec<i32>,
     pub zk_version: i32,
-    pub replicas: Option<i32>,
-    pub offline_replicas: Option<i32>,
+    pub replicas: Vec<i32>,
+    pub offline_replicas: Vec<i32>,
+}
+
+impl crate::Encode for PartitionStates {
+    fn encode_len(&self) -> usize {
+        self.partition.encode_len()
+            + self.controller_epoch.encode_len()
+            + self.leader.encode_len()
+            + self.leader_epoch.encode_len()
+            + self.isr.encode_len()
+            + self.zk_version.encode_len()
+            + self.replicas.encode_len()
+            + self.offline_replicas.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.partition.encode(writer);
+        self.controller_epoch.encode(writer);
+        self.leader.encode(writer);
+        self.leader_epoch.encode(writer);
+        self.isr.encode(writer);
+        self.zk_version.encode(writer);
+        self.replicas.encode(writer);
+        self.offline_replicas.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TopicStates<'i> {
     pub topic: &'i str,
-    pub partition_states: Option<PartitionStates>,
+    pub partition_states: Vec<PartitionStates>,
+}
+
+impl<'i> crate::Encode for TopicStates<'i> {
+    fn encode_len(&self) -> usize {
+        self.topic.encode_len() + self.partition_states.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.topic.encode(writer);
+        self.partition_states.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -120,9 +170,35 @@ pub struct EndPoints<'i> {
     pub security_protocol_type: i16,
 }
 
+impl<'i> crate::Encode for EndPoints<'i> {
+    fn encode_len(&self) -> usize {
+        self.port.encode_len()
+            + self.host.encode_len()
+            + self.listener_name.encode_len()
+            + self.security_protocol_type.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.port.encode(writer);
+        self.host.encode(writer);
+        self.listener_name.encode(writer);
+        self.security_protocol_type.encode(writer);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct LiveBrokers<'i> {
     pub id: i32,
-    pub end_points: Option<EndPoints<'i>>,
+    pub end_points: Vec<EndPoints<'i>>,
     pub rack: Option<&'i str>,
+}
+
+impl<'i> crate::Encode for LiveBrokers<'i> {
+    fn encode_len(&self) -> usize {
+        self.id.encode_len() + self.end_points.encode_len() + self.rack.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.id.encode(writer);
+        self.end_points.encode(writer);
+        self.rack.encode(writer);
+    }
 }

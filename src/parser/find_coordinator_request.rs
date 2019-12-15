@@ -12,3 +12,13 @@ pub struct FindCoordinatorRequest<'i> {
     pub key: &'i str,
     pub key_type: i8,
 }
+
+impl<'i> crate::Encode for FindCoordinatorRequest<'i> {
+    fn encode_len(&self) -> usize {
+        self.key.encode_len() + self.key_type.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.key.encode(writer);
+        self.key_type.encode(writer);
+    }
+}

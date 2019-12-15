@@ -46,3 +46,24 @@ pub struct DescribeAclsRequest<'i> {
     pub operation: i8,
     pub permission_type: i8,
 }
+
+impl<'i> crate::Encode for DescribeAclsRequest<'i> {
+    fn encode_len(&self) -> usize {
+        self.resource_type.encode_len()
+            + self.resource_name.encode_len()
+            + self.resource_pattern_type_filter.encode_len()
+            + self.principal.encode_len()
+            + self.host.encode_len()
+            + self.operation.encode_len()
+            + self.permission_type.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.resource_type.encode(writer);
+        self.resource_name.encode(writer);
+        self.resource_pattern_type_filter.encode(writer);
+        self.principal.encode(writer);
+        self.host.encode(writer);
+        self.operation.encode(writer);
+        self.permission_type.encode(writer);
+    }
+}

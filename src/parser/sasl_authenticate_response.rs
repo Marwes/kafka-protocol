@@ -21,3 +21,18 @@ pub struct SaslAuthenticateResponse<'i> {
     pub auth_bytes: &'i [u8],
     pub session_lifetime_ms: i64,
 }
+
+impl<'i> crate::Encode for SaslAuthenticateResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.error_code.encode_len()
+            + self.error_message.encode_len()
+            + self.auth_bytes.encode_len()
+            + self.session_lifetime_ms.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.error_code.encode(writer);
+        self.error_message.encode(writer);
+        self.auth_bytes.encode(writer);
+        self.session_lifetime_ms.encode(writer);
+    }
+}

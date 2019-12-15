@@ -11,3 +11,12 @@ where
 pub struct SaslAuthenticateRequest<'i> {
     pub auth_bytes: &'i [u8],
 }
+
+impl<'i> crate::Encode for SaslAuthenticateRequest<'i> {
+    fn encode_len(&self) -> usize {
+        self.auth_bytes.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.auth_bytes.encode(writer);
+    }
+}

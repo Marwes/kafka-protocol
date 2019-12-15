@@ -6,11 +6,11 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        optional(
+        many(
             (
                 be_i8(),
                 string(),
-                optional((string(), be_i8(), nullable_string()).map(
+                many((string(), be_i8(), nullable_string()).map(
                     |(name, config_operation, value)| Configs {
                         name,
                         config_operation,
@@ -36,8 +36,18 @@ where
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct IncrementalAlterConfigsRequest<'i> {
-    pub resources: Option<Resources<'i>>,
+    pub resources: Vec<Resources<'i>>,
     pub validate_only: bool,
+}
+
+impl<'i> crate::Encode for IncrementalAlterConfigsRequest<'i> {
+    fn encode_len(&self) -> usize {
+        self.resources.encode_len() + self.validate_only.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.resources.encode(writer);
+        self.validate_only.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -47,9 +57,33 @@ pub struct Configs<'i> {
     pub value: Option<&'i str>,
 }
 
+impl<'i> crate::Encode for Configs<'i> {
+    fn encode_len(&self) -> usize {
+        self.name.encode_len() + self.config_operation.encode_len() + self.value.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.name.encode(writer);
+        self.config_operation.encode(writer);
+        self.value.encode(writer);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Resources<'i> {
     pub resource_type: i8,
     pub resource_name: &'i str,
-    pub configs: Option<Configs<'i>>,
+    pub configs: Vec<Configs<'i>>,
+}
+
+impl<'i> crate::Encode for Resources<'i> {
+    fn encode_len(&self) -> usize {
+        self.resource_type.encode_len()
+            + self.resource_name.encode_len()
+            + self.configs.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.resource_type.encode(writer);
+        self.resource_name.encode(writer);
+        self.configs.encode(writer);
+    }
 }

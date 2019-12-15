@@ -6,8 +6,8 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        optional(
-            (string(), optional(be_i32())).map(|(topic, partition_id)| TopicPartitions {
+        many(
+            (string(), many(be_i32())).map(|(topic, partition_id)| TopicPartitions {
                 topic,
                 partition_id,
             }),
@@ -24,12 +24,32 @@ where
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ElectPreferredLeadersRequest<'i> {
-    pub topic_partitions: Option<TopicPartitions<'i>>,
+    pub topic_partitions: Vec<TopicPartitions<'i>>,
     pub timeout_ms: i32,
+}
+
+impl<'i> crate::Encode for ElectPreferredLeadersRequest<'i> {
+    fn encode_len(&self) -> usize {
+        self.topic_partitions.encode_len() + self.timeout_ms.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.topic_partitions.encode(writer);
+        self.timeout_ms.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TopicPartitions<'i> {
     pub topic: &'i str,
-    pub partition_id: Option<i32>,
+    pub partition_id: Vec<i32>,
+}
+
+impl<'i> crate::Encode for TopicPartitions<'i> {
+    fn encode_len(&self) -> usize {
+        self.topic.encode_len() + self.partition_id.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.topic.encode(writer);
+        self.partition_id.encode(writer);
+    }
 }

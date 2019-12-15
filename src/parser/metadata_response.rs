@@ -6,7 +6,7 @@ where
 {
     (
         be_i32(),
-        optional((be_i32(), string(), be_i32(), nullable_string()).map(
+        many((be_i32(), string(), be_i32(), nullable_string()).map(
             |(node_id, host, port, rack)| Brokers {
                 node_id,
                 host,
@@ -16,20 +16,20 @@ where
         )),
         nullable_string(),
         be_i32(),
-        optional(
+        many(
             (
                 be_i16(),
                 string(),
                 any().map(|b| b != 0),
-                optional(
+                many(
                     (
                         be_i16(),
                         be_i32(),
                         be_i32(),
                         be_i32(),
-                        optional(be_i32()),
-                        optional(be_i32()),
-                        optional(be_i32()),
+                        many(be_i32()),
+                        many(be_i32()),
+                        many(be_i32()),
                     )
                         .map(
                             |(
@@ -93,11 +93,30 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct MetadataResponse<'i> {
     pub throttle_time_ms: i32,
-    pub brokers: Option<Brokers<'i>>,
+    pub brokers: Vec<Brokers<'i>>,
     pub cluster_id: Option<&'i str>,
     pub controller_id: i32,
-    pub topics: Option<Topics<'i>>,
+    pub topics: Vec<Topics<'i>>,
     pub cluster_authorized_operations: i32,
+}
+
+impl<'i> crate::Encode for MetadataResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len()
+            + self.brokers.encode_len()
+            + self.cluster_id.encode_len()
+            + self.controller_id.encode_len()
+            + self.topics.encode_len()
+            + self.cluster_authorized_operations.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.brokers.encode(writer);
+        self.cluster_id.encode(writer);
+        self.controller_id.encode(writer);
+        self.topics.encode(writer);
+        self.cluster_authorized_operations.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -108,15 +127,51 @@ pub struct Brokers<'i> {
     pub rack: Option<&'i str>,
 }
 
+impl<'i> crate::Encode for Brokers<'i> {
+    fn encode_len(&self) -> usize {
+        self.node_id.encode_len()
+            + self.host.encode_len()
+            + self.port.encode_len()
+            + self.rack.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.node_id.encode(writer);
+        self.host.encode(writer);
+        self.port.encode(writer);
+        self.rack.encode(writer);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions {
     pub error_code: i16,
     pub partition_index: i32,
     pub leader_id: i32,
     pub leader_epoch: i32,
-    pub replica_nodes: Option<i32>,
-    pub isr_nodes: Option<i32>,
-    pub offline_replicas: Option<i32>,
+    pub replica_nodes: Vec<i32>,
+    pub isr_nodes: Vec<i32>,
+    pub offline_replicas: Vec<i32>,
+}
+
+impl crate::Encode for Partitions {
+    fn encode_len(&self) -> usize {
+        self.error_code.encode_len()
+            + self.partition_index.encode_len()
+            + self.leader_id.encode_len()
+            + self.leader_epoch.encode_len()
+            + self.replica_nodes.encode_len()
+            + self.isr_nodes.encode_len()
+            + self.offline_replicas.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.error_code.encode(writer);
+        self.partition_index.encode(writer);
+        self.leader_id.encode(writer);
+        self.leader_epoch.encode(writer);
+        self.replica_nodes.encode(writer);
+        self.isr_nodes.encode(writer);
+        self.offline_replicas.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -124,6 +179,23 @@ pub struct Topics<'i> {
     pub error_code: i16,
     pub name: &'i str,
     pub is_internal: bool,
-    pub partitions: Option<Partitions>,
+    pub partitions: Vec<Partitions>,
     pub topic_authorized_operations: i32,
+}
+
+impl<'i> crate::Encode for Topics<'i> {
+    fn encode_len(&self) -> usize {
+        self.error_code.encode_len()
+            + self.name.encode_len()
+            + self.is_internal.encode_len()
+            + self.partitions.encode_len()
+            + self.topic_authorized_operations.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.error_code.encode(writer);
+        self.name.encode(writer);
+        self.is_internal.encode(writer);
+        self.partitions.encode(writer);
+        self.topic_authorized_operations.encode(writer);
+    }
 }

@@ -9,10 +9,10 @@ where
         be_i32(),
         string(),
         nullable_string(),
-        optional(
+        many(
             (
                 string(),
-                optional((be_i32(), be_i64(), be_i32(), nullable_string()).map(
+                many((be_i32(), be_i64(), be_i32(), nullable_string()).map(
                     |(
                         partition_index,
                         committed_offset,
@@ -48,7 +48,24 @@ pub struct OffsetCommitRequest<'i> {
     pub generation_id: i32,
     pub member_id: &'i str,
     pub group_instance_id: Option<&'i str>,
-    pub topics: Option<Topics<'i>>,
+    pub topics: Vec<Topics<'i>>,
+}
+
+impl<'i> crate::Encode for OffsetCommitRequest<'i> {
+    fn encode_len(&self) -> usize {
+        self.group_id.encode_len()
+            + self.generation_id.encode_len()
+            + self.member_id.encode_len()
+            + self.group_instance_id.encode_len()
+            + self.topics.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.group_id.encode(writer);
+        self.generation_id.encode(writer);
+        self.member_id.encode(writer);
+        self.group_instance_id.encode(writer);
+        self.topics.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -59,8 +76,33 @@ pub struct Partitions<'i> {
     pub committed_metadata: Option<&'i str>,
 }
 
+impl<'i> crate::Encode for Partitions<'i> {
+    fn encode_len(&self) -> usize {
+        self.partition_index.encode_len()
+            + self.committed_offset.encode_len()
+            + self.committed_leader_epoch.encode_len()
+            + self.committed_metadata.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.partition_index.encode(writer);
+        self.committed_offset.encode(writer);
+        self.committed_leader_epoch.encode(writer);
+        self.committed_metadata.encode(writer);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Topics<'i> {
     pub name: &'i str,
-    pub partitions: Option<Partitions<'i>>,
+    pub partitions: Vec<Partitions<'i>>,
+}
+
+impl<'i> crate::Encode for Topics<'i> {
+    fn encode_len(&self) -> usize {
+        self.name.encode_len() + self.partitions.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.name.encode(writer);
+        self.partitions.encode(writer);
+    }
 }

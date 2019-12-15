@@ -16,3 +16,13 @@ pub struct ExpireDelegationTokenRequest<'i> {
     pub hmac: &'i [u8],
     pub expiry_time_period: i64,
 }
+
+impl<'i> crate::Encode for ExpireDelegationTokenRequest<'i> {
+    fn encode_len(&self) -> usize {
+        self.hmac.encode_len() + self.expiry_time_period.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.hmac.encode(writer);
+        self.expiry_time_period.encode(writer);
+    }
+}

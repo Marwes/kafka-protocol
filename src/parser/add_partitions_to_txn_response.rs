@@ -7,10 +7,10 @@ where
 {
     (
         be_i32(),
-        optional(
+        many(
             (
                 string(),
-                optional(
+                many(
                     (be_i32(), be_i16()).map(|(partition, error_code)| PartitionErrors {
                         partition,
                         error_code,
@@ -32,7 +32,17 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddPartitionsToTxnResponse<'i> {
     pub throttle_time_ms: i32,
-    pub errors: Option<Errors<'i>>,
+    pub errors: Vec<Errors<'i>>,
+}
+
+impl<'i> crate::Encode for AddPartitionsToTxnResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len() + self.errors.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.errors.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -41,8 +51,28 @@ pub struct PartitionErrors {
     pub error_code: i16,
 }
 
+impl crate::Encode for PartitionErrors {
+    fn encode_len(&self) -> usize {
+        self.partition.encode_len() + self.error_code.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.partition.encode(writer);
+        self.error_code.encode(writer);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Errors<'i> {
     pub topic: &'i str,
-    pub partition_errors: Option<PartitionErrors>,
+    pub partition_errors: Vec<PartitionErrors>,
+}
+
+impl<'i> crate::Encode for Errors<'i> {
+    fn encode_len(&self) -> usize {
+        self.topic.encode_len() + self.partition_errors.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.topic.encode(writer);
+        self.partition_errors.encode(writer);
+    }
 }

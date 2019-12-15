@@ -55,8 +55,41 @@ pub struct CreateDelegationTokenResponse<'i> {
     pub throttle_time_ms: i32,
 }
 
+impl<'i> crate::Encode for CreateDelegationTokenResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.error_code.encode_len()
+            + self.owner.encode_len()
+            + self.issue_timestamp.encode_len()
+            + self.expiry_timestamp.encode_len()
+            + self.max_timestamp.encode_len()
+            + self.token_id.encode_len()
+            + self.hmac.encode_len()
+            + self.throttle_time_ms.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.error_code.encode(writer);
+        self.owner.encode(writer);
+        self.issue_timestamp.encode(writer);
+        self.expiry_timestamp.encode(writer);
+        self.max_timestamp.encode(writer);
+        self.token_id.encode(writer);
+        self.hmac.encode(writer);
+        self.throttle_time_ms.encode(writer);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Owner<'i> {
     pub principal_type: &'i str,
     pub name: &'i str,
+}
+
+impl<'i> crate::Encode for Owner<'i> {
+    fn encode_len(&self) -> usize {
+        self.principal_type.encode_len() + self.name.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.principal_type.encode(writer);
+        self.name.encode(writer);
+    }
 }

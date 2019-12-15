@@ -19,3 +19,16 @@ pub struct SyncGroupResponse<'i> {
     pub error_code: i16,
     pub assignment: &'i [u8],
 }
+
+impl<'i> crate::Encode for SyncGroupResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len()
+            + self.error_code.encode_len()
+            + self.assignment.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.error_code.encode(writer);
+        self.assignment.encode(writer);
+    }
+}

@@ -9,8 +9,8 @@ where
         be_i32(),
         be_i64(),
         any().map(|b| b != 0),
-        optional(
-            (string(), optional(be_i32())).map(|(topic, partition_ids)| Partitions {
+        many(
+            (string(), many(be_i32())).map(|(topic, partition_ids)| Partitions {
                 topic,
                 partition_ids,
             }),
@@ -35,11 +35,38 @@ pub struct StopReplicaRequest<'i> {
     pub controller_epoch: i32,
     pub broker_epoch: i64,
     pub delete_partitions: bool,
-    pub partitions: Option<Partitions<'i>>,
+    pub partitions: Vec<Partitions<'i>>,
+}
+
+impl<'i> crate::Encode for StopReplicaRequest<'i> {
+    fn encode_len(&self) -> usize {
+        self.controller_id.encode_len()
+            + self.controller_epoch.encode_len()
+            + self.broker_epoch.encode_len()
+            + self.delete_partitions.encode_len()
+            + self.partitions.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.controller_id.encode(writer);
+        self.controller_epoch.encode(writer);
+        self.broker_epoch.encode(writer);
+        self.delete_partitions.encode(writer);
+        self.partitions.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions<'i> {
     pub topic: &'i str,
-    pub partition_ids: Option<i32>,
+    pub partition_ids: Vec<i32>,
+}
+
+impl<'i> crate::Encode for Partitions<'i> {
+    fn encode_len(&self) -> usize {
+        self.topic.encode_len() + self.partition_ids.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.topic.encode(writer);
+        self.partition_ids.encode(writer);
+    }
 }

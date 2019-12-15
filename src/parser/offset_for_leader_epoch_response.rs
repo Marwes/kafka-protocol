@@ -7,10 +7,10 @@ where
 {
     (
         be_i32(),
-        optional(
+        many(
             (
                 string(),
-                optional((be_i16(), be_i32(), be_i32(), be_i64()).map(
+                many((be_i16(), be_i32(), be_i32(), be_i64()).map(
                     |(error_code, partition, leader_epoch, end_offset)| Partitions {
                         error_code,
                         partition,
@@ -31,7 +31,17 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct OffsetForLeaderEpochResponse<'i> {
     pub throttle_time_ms: i32,
-    pub topics: Option<Topics<'i>>,
+    pub topics: Vec<Topics<'i>>,
+}
+
+impl<'i> crate::Encode for OffsetForLeaderEpochResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len() + self.topics.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.topics.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -42,8 +52,33 @@ pub struct Partitions {
     pub end_offset: i64,
 }
 
+impl crate::Encode for Partitions {
+    fn encode_len(&self) -> usize {
+        self.error_code.encode_len()
+            + self.partition.encode_len()
+            + self.leader_epoch.encode_len()
+            + self.end_offset.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.error_code.encode(writer);
+        self.partition.encode(writer);
+        self.leader_epoch.encode(writer);
+        self.end_offset.encode(writer);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Topics<'i> {
     pub topic: &'i str,
-    pub partitions: Option<Partitions>,
+    pub partitions: Vec<Partitions>,
+}
+
+impl<'i> crate::Encode for Topics<'i> {
+    fn encode_len(&self) -> usize {
+        self.topic.encode_len() + self.partitions.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.topic.encode(writer);
+        self.partitions.encode(writer);
+    }
 }

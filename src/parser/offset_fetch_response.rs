@@ -6,10 +6,10 @@ where
 {
     (
         be_i32(),
-        optional(
+        many(
             (
                 string(),
-                optional(
+                many(
                     (be_i32(), be_i64(), be_i32(), nullable_string(), be_i16()).map(
                         |(partition, offset, leader_epoch, metadata, error_code)| {
                             PartitionResponses {
@@ -42,8 +42,21 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct OffsetFetchResponse<'i> {
     pub throttle_time_ms: i32,
-    pub responses: Option<Responses<'i>>,
+    pub responses: Vec<Responses<'i>>,
     pub error_code: i16,
+}
+
+impl<'i> crate::Encode for OffsetFetchResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len()
+            + self.responses.encode_len()
+            + self.error_code.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.responses.encode(writer);
+        self.error_code.encode(writer);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -55,8 +68,35 @@ pub struct PartitionResponses<'i> {
     pub error_code: i16,
 }
 
+impl<'i> crate::Encode for PartitionResponses<'i> {
+    fn encode_len(&self) -> usize {
+        self.partition.encode_len()
+            + self.offset.encode_len()
+            + self.leader_epoch.encode_len()
+            + self.metadata.encode_len()
+            + self.error_code.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.partition.encode(writer);
+        self.offset.encode(writer);
+        self.leader_epoch.encode(writer);
+        self.metadata.encode(writer);
+        self.error_code.encode(writer);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Responses<'i> {
     pub topic: &'i str,
-    pub partition_responses: Option<PartitionResponses<'i>>,
+    pub partition_responses: Vec<PartitionResponses<'i>>,
+}
+
+impl<'i> crate::Encode for Responses<'i> {
+    fn encode_len(&self) -> usize {
+        self.topic.encode_len() + self.partition_responses.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.topic.encode(writer);
+        self.partition_responses.encode(writer);
+    }
 }

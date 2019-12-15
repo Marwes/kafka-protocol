@@ -35,3 +35,22 @@ pub struct FindCoordinatorResponse<'i> {
     pub host: &'i str,
     pub port: i32,
 }
+
+impl<'i> crate::Encode for FindCoordinatorResponse<'i> {
+    fn encode_len(&self) -> usize {
+        self.throttle_time_ms.encode_len()
+            + self.error_code.encode_len()
+            + self.error_message.encode_len()
+            + self.node_id.encode_len()
+            + self.host.encode_len()
+            + self.port.encode_len()
+    }
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.throttle_time_ms.encode(writer);
+        self.error_code.encode(writer);
+        self.error_message.encode(writer);
+        self.node_id.encode(writer);
+        self.host.encode(writer);
+        self.port.encode(writer);
+    }
+}
