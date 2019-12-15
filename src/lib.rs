@@ -4,10 +4,13 @@ extern crate combine;
 use std::{convert::TryFrom, str};
 
 use combine::{
-    byte::num::{be_i16, be_i32},
+    byte::num::{be_i16, be_i32, be_i64},
     error::StreamError,
-    optional,
-    parser::{range, token::value},
+    parser::{
+        choice::optional,
+        range,
+        token::{any, value},
+    },
     stream::StreamErrorFor,
     ParseError, Parser, RangeStream,
 };
@@ -16,18 +19,22 @@ use api_key::ApiKey;
 
 pub mod api_key;
 pub mod error;
-mod parser;
+pub mod parser;
+
+fn be_i8<'i, I>() -> impl Parser<I, Output = i8>
+where
+    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
+{
+    any().map(|b| b as i8)
+}
 
 fn string<'i, I>() -> impl Parser<I, Output = &'i str>
 where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    be_i16()
-        .and_then(|i| usize::try_from(i).map_err(StreamErrorFor::<I>::other))
-        .then_partial(|&mut i| {
-            range::take(i).and_then(|bs| str::from_utf8(bs).map_err(StreamErrorFor::<I>::other))
-        })
+    bytes().and_then(|bs| str::from_utf8(bs).map_err(StreamErrorFor::<I>::other))
 }
 
 fn nullable_string<'i, I>() -> impl Parser<I, Output = Option<&'i str>>
@@ -39,6 +46,16 @@ where
         bs.map(|bs| str::from_utf8(bs).map_err(StreamErrorFor::<I>::other))
             .transpose()
     })
+}
+
+fn bytes<'i, I>() -> impl Parser<I, Output = &'i [u8]>
+where
+    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
+{
+    be_i16()
+        .and_then(|i| usize::try_from(i).map_err(StreamErrorFor::<I>::other))
+        .then_partial(|&mut i| range::take(i))
 }
 
 fn nullable_bytes<'i, I>() -> impl Parser<I, Output = Option<&'i [u8]>>
@@ -55,18 +72,18 @@ where
     })
 }
 
-struct Header<'a> {
+pub struct Header<'a> {
     /// The id of the request type.
-    api_key: ApiKey,
+    pub api_key: ApiKey,
     /// The version of the API.
-    api_version: i16,
+    pub api_version: i16,
     /// A user-supplied integer value that will be passed back with the response
-    correlation_id: i32,
+    pub correlation_id: i32,
     /// A user specified identifier for the client making the request.
-    client_id: &'a [u8],
+    pub client_id: &'a [u8],
 }
 
-fn header<'i, I>() -> impl Parser<I, Output = Header<'i>>
+pub fn header<'i, I>() -> impl Parser<I, Output = Header<'i>>
 where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,

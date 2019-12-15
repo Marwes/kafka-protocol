@@ -96,7 +96,7 @@ impl TryFrom<i16> for ApiKey {
             42 => ApiKey::DeleteGroups,
             43 => ApiKey::ElectPreferredLeaders,
             44 => ApiKey::IncrementalAlterConfigs,
-            _ => return Err("Invalid ApiKey")
+            _ => return Err("Invalid ApiKey"),
         })
     }
 }
