@@ -199,6 +199,84 @@ impl Encode for bool {
     }
 }
 
+use std::io;
+
+use {
+    bytes::Buf,
+    tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+};
+
+use crate::parser::{
+    fetch_request::FetchRequest,
+    fetch_response::{fetch_response, FetchResponse},
+    produce_request::ProduceRequest,
+    produce_response::{produce_response, ProduceResponse},
+};
+
+pub struct Client<I> {
+    io: I,
+    buf: Vec<u8>,
+}
+
+impl Client<tokio::net::TcpStream> {
+    pub async fn connect(addr: impl tokio::net::ToSocketAddrs) -> io::Result<Self> {
+        Ok(Self {
+            io: tokio::net::TcpStream::connect(addr).await?,
+            buf: Vec::new(),
+        })
+    }
+}
+
+impl<I> Client<I>
+where
+    I: AsyncRead + AsyncWrite + std::marker::Unpin,
+{
+    pub async fn produce(
+        &mut self,
+        request: ProduceRequest<'_>,
+    ) -> io::Result<ProduceResponse<'_>> {
+        self.call(request, produce_response()).await
+    }
+
+    pub async fn fetch(&mut self, request: FetchRequest<'_>) -> io::Result<FetchResponse<'_>> {
+        self.call(request, fetch_response()).await
+    }
+
+    async fn call<'i, R, P, O>(&'i mut self, request: R, mut parser: P) -> io::Result<O>
+    where
+        R: Encode,
+        P: Parser<&'i [u8], Output = O>,
+    {
+        self.buf.clear();
+
+        request.encode(&mut self.buf);
+
+        self.io.write_all(&self.buf).await?;
+
+        self.buf.clear();
+
+        self.buf.reserve(mem::size_of::<i32>());
+
+        while self.buf.len() < mem::size_of::<i32>() {
+            self.io.read_buf(&mut self.buf).await?;
+        }
+
+        let response_len = (&self.buf[..mem::size_of::<i32>()]).get_i32();
+        let response_len = usize::try_from(response_len).expect("Valid len");
+
+        self.buf.clear();
+        self.buf.reserve(response_len);
+
+        while self.buf.len() < response_len {
+            self.io.read_buf(&mut self.buf).await?;
+        }
+
+        let (response, _) = parser.parse(&self.buf[..]).expect("Valid response");
+
+        Ok(response)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
