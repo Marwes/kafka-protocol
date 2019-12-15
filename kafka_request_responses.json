@@ -1,4 +1,6 @@
 [
+  "Request Header => api_key api_version correlation_id client_id \n  api_key => INT16\n  api_version => INT16\n  correlation_id => INT32\n  client_id => NULLABLE_STRING\n",
+  "Response Header => correlation_id \n  correlation_id => INT32\n",
   "Produce Request (Version: 0) => acks timeout [topic_data] \n  acks => INT16\n  timeout => INT32\n  topic_data => topic [data] \n    topic => STRING\n    data => partition record_set \n      partition => INT32\n      record_set => RECORDS\n",
   "Produce Request (Version: 1) => acks timeout [topic_data] \n  acks => INT16\n  timeout => INT32\n  topic_data => topic [data] \n    topic => STRING\n    data => partition record_set \n      partition => INT32\n      record_set => RECORDS\n",
   "Produce Request (Version: 2) => acks timeout [topic_data] \n  acks => INT16\n  timeout => INT32\n  topic_data => topic [data] \n    topic => STRING\n    data => partition record_set \n      partition => INT32\n      record_set => RECORDS\n",

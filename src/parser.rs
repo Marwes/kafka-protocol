@@ -75,6 +75,8 @@ pub mod produce_request;
 pub mod produce_response;
 pub mod renew_delegation_token_request;
 pub mod renew_delegation_token_response;
+pub mod request_header;
+pub mod response_header;
 pub mod sasl_authenticate_request;
 pub mod sasl_authenticate_response;
 pub mod sasl_handshake_request;
