@@ -199,6 +199,65 @@ impl Encode for bool {
     }
 }
 
+pub struct Record<'i> {
+    length: i32,          // varint
+    attributes: i8,       // bit 0~7: unused
+    timestamp_delta: i32, // varint
+    offset_delta: i32,    // varint
+    key: &'i [u8],
+    value: &'i [u8],
+    headers: Vec<RecordHeader<'i>>,
+}
+
+pub struct RecordHeader<'i> {
+    key: &'i str,
+    value: &'i [u8],
+}
+
+fn encode_var_bytes(input: &[u8], writer: &mut impl bytes::BufMut) {
+    let len = i32::try_from(input.len()).unwrap();
+    encode_var_i32(len, writer);
+    writer.put(input);
+}
+
+fn encode_var_i32(input: i32, writer: &mut impl bytes::BufMut) {
+    let mut buf = [0; 5];
+    integer_encoding::VarInt::encode_var(input, &mut buf);
+    writer.put(&buf[..]);
+}
+
+impl Encode for Record<'_> {
+    fn encode_len(&self) -> usize {
+        unimplemented!()
+    }
+
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        encode_var_i32(self.length, writer);
+        writer.put_i8(self.attributes);
+        encode_var_i32(self.timestamp_delta, writer);
+        encode_var_i32(self.offset_delta, writer);
+        encode_var_bytes(self.key, writer);
+        encode_var_bytes(self.value, writer);
+
+        let len = i32::try_from(self.headers.len()).unwrap();
+        encode_var_i32(len, writer);
+        for header in &self.headers {
+            header.encode(writer);
+        }
+    }
+}
+
+impl Encode for RecordHeader<'_> {
+    fn encode_len(&self) -> usize {
+        unimplemented!()
+    }
+
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        encode_var_bytes(self.key.as_bytes(), writer);
+        encode_var_bytes(self.value, writer);
+    }
+}
+
 use std::io;
 
 use {
