@@ -10,6 +10,7 @@ use combine::{
     stream::StreamErrorFor,
     ParseError, Parser, RangeStream,
 };
+use integer_encoding::VarInt;
 
 use api_key::ApiKey;
 
@@ -133,6 +134,22 @@ impl Encode for Option<&'_ [u8]> {
     fn encode_len(&self) -> usize {
         match self {
             Some(t) => t.encode_len(),
+            None => (-1i32).encode_len(),
+        }
+    }
+
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        match self {
+            Some(t) => t.encode(writer),
+            None => (-1i32).encode(writer),
+        }
+    }
+}
+
+impl Encode for Option<&'_ str> {
+    fn encode_len(&self) -> usize {
+        match self {
+            Some(t) => t.encode_len(),
             None => (-1i16).encode_len(),
         }
     }
@@ -142,16 +159,6 @@ impl Encode for Option<&'_ [u8]> {
             Some(t) => t.encode(writer),
             None => (-1i16).encode(writer),
         }
-    }
-}
-
-impl Encode for Option<&'_ str> {
-    fn encode_len(&self) -> usize {
-        self.as_ref().map(|s| s.as_bytes()).encode_len()
-    }
-
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
-        self.as_ref().map(|s| s.as_bytes()).encode(writer)
     }
 }
 
@@ -169,11 +176,13 @@ impl Encode for &'_ [u8] {
 
 impl Encode for &'_ str {
     fn encode_len(&self) -> usize {
-        self.as_bytes().encode_len()
+        mem::size_of::<i16>() + self.len()
     }
 
     fn encode(&self, writer: &mut impl bytes::BufMut) {
-        self.as_bytes().encode(writer)
+        let l = i16::try_from(self.len()).unwrap();
+        l.encode(writer);
+        writer.put(self.as_bytes());
     }
 }
 
@@ -184,6 +193,62 @@ impl Encode for bool {
 
     fn encode(&self, writer: &mut impl bytes::BufMut) {
         writer.put_u8(*self as u8);
+    }
+}
+
+pub struct MessageSet<'i> {
+    offset: i64,
+    message_size: i32,
+    message: Message<'i>,
+}
+
+pub struct Message<'i> {
+    crc: i32,
+    magic_byte: i8,
+    // bit 0~2:
+    //     0: no compression
+    //     1: gzip
+    //     2: snappy
+    //     3: lz4
+    // bit 3: timestampType
+    //     0: create time
+    //     1: log append time
+    // bit 4~7: unused
+    attributes: i8,
+    timestamp: i64,
+    key: &'i [u8],
+    value: &'i [u8],
+}
+
+impl Encode for MessageSet<'_> {
+    fn encode_len(&self) -> usize {
+        self.offset.encode_len() + self.message_size.encode_len() + self.message.encode_len()
+    }
+
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.offset.encode(writer);
+        self.message_size.encode(writer);
+        self.message.encode(writer);
+    }
+}
+
+impl Encode for Message<'_> {
+    fn encode_len(&self) -> usize {
+        self.crc.encode_len()
+            + self.magic_byte.encode_len()
+            + self.attributes.encode_len()
+            + self.timestamp.encode_len()
+            + self.key.encode_len()
+            + self.value.encode_len()
+    }
+
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        self.crc.encode(writer);
+        self.magic_byte.encode(writer);
+        self.attributes.encode(writer);
+        self.timestamp.encode(writer);
+        self.key.encode(writer);
+        self.value.encode(writer);
     }
 }
 
@@ -202,6 +267,9 @@ pub struct RecordHeader<'i> {
     value: &'i [u8],
 }
 
+fn encode_var_bytes_space(input: &[u8]) -> usize {
+    i32::try_from(input.len()).unwrap().required_space() + input.len()
+}
 fn encode_var_bytes(input: &[u8], writer: &mut impl bytes::BufMut) {
     let len = i32::try_from(input.len()).unwrap();
     encode_var_i32(len, writer);
@@ -210,13 +278,22 @@ fn encode_var_bytes(input: &[u8], writer: &mut impl bytes::BufMut) {
 
 fn encode_var_i32(input: i32, writer: &mut impl bytes::BufMut) {
     let mut buf = [0; 5];
-    integer_encoding::VarInt::encode_var(input, &mut buf);
-    writer.put(&buf[..]);
+    let i = integer_encoding::VarInt::encode_var(input, &mut buf);
+    writer.put(&buf[..i]);
 }
 
 impl Encode for Record<'_> {
     fn encode_len(&self) -> usize {
-        unimplemented!()
+        self.length.required_space()
+            + 1 // self.attributes
+            + self.timestamp_delta.required_space()
+            + self.offset_delta.required_space()
+            + encode_var_bytes_space(self.key)
+            + encode_var_bytes_space(self.value)
+            + i32::try_from(self.headers.len())
+                .unwrap()
+                .required_space()
+            + self.headers.iter().map(|h| h.encode_len()).sum::<usize>()
     }
 
     fn encode(&self, writer: &mut impl bytes::BufMut) {
@@ -237,7 +314,7 @@ impl Encode for Record<'_> {
 
 impl Encode for RecordHeader<'_> {
     fn encode_len(&self) -> usize {
-        unimplemented!()
+        encode_var_bytes_space(self.key.as_bytes()) + encode_var_bytes_space(self.value)
     }
 
     fn encode(&self, writer: &mut impl bytes::BufMut) {
@@ -263,6 +340,7 @@ use crate::parser::{
 pub struct Client<I> {
     io: I,
     buf: Vec<u8>,
+    correlation_id: i32,
 }
 
 impl Client<tokio::net::TcpStream> {
@@ -270,6 +348,7 @@ impl Client<tokio::net::TcpStream> {
         Ok(Self {
             io: tokio::net::TcpStream::connect(addr).await?,
             buf: Vec::new(),
+            correlation_id: 0,
         })
     }
 }
@@ -333,9 +412,10 @@ where
             let header = RequestHeader {
                 api_key: api_key as _,
                 api_version,
-                correlation_id: 0,
+                correlation_id: self.correlation_id,
                 client_id: None,
             };
+            self.correlation_id += 1;
 
             i32::try_from(header.encode_len() + request.encode_len())
                 .unwrap()
@@ -358,6 +438,7 @@ where
 
         let response_len = (&self.buf[..mem::size_of::<i32>()]).get_i32();
         let response_len = usize::try_from(response_len).expect("Valid len");
+        log::trace!("Response len: {}", response_len);
 
         self.buf.reserve(self.buf.len() + response_len);
 
@@ -370,6 +451,7 @@ where
         let (_header_response, rest) = crate::parser::response_header::response_header()
             .parse(&self.buf[mem::size_of::<i32>()..])
             .expect("Invalid header");
+        log::trace!("Response rest: {}", rest.len());
         let (response, rest) = parser.parse(rest).expect("Invalid response");
         assert!(
             rest.is_empty(),
@@ -388,7 +470,9 @@ mod tests {
     use std::net::IpAddr;
 
     #[tokio::test]
-    async fn it_works() {
+    async fn api_versions() {
+        let _ = env_logger::try_init();
+
         let mut client = Client::connect((IpAddr::from([127, 0, 0, 1]), 9092))
             .await
             .unwrap();
@@ -397,14 +481,49 @@ mod tests {
             .await
             .unwrap();
         eprintln!("{:#?}", api_versions_response);
-        client
+    }
+
+    #[tokio::test]
+    async fn produce() {
+        let _ = env_logger::try_init();
+
+        use crate::parser::produce_request::{Data, TopicData};
+        let mut client = Client::connect((IpAddr::from([127, 0, 0, 1]), 9092))
+            .await
+            .unwrap();
+
+        let mut record_set = Vec::new();
+        {
+            let message = Message {
+                attributes: 0,
+                magic_byte: 0,
+                crc: 0,
+                timestamp: 0,
+                key: b"key",
+                value: b"value",
+            };
+            let record = MessageSet {
+                offset: 1,
+                message_size: i32::try_from(message.encode_len()).unwrap(),
+                message,
+            };
+            vec![record].encode(&mut record_set);
+        }
+        let produce_response = client
             .produce(ProduceRequest {
                 acks: 1,
                 timeout: 1000,
                 transactional_id: None,
-                topic_data: vec![],
+                topic_data: vec![TopicData {
+                    topic: "test",
+                    data: vec![Data {
+                        partition: 0,
+                        record_set: Some(&record_set),
+                    }],
+                }],
             })
             .await
             .unwrap();
+        eprintln!("{:#?}", produce_response);
     }
 }
