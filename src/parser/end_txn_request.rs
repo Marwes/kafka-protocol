@@ -36,3 +36,5 @@ impl<'i> crate::Encode for EndTxnRequest<'i> {
         self.transaction_result.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 1;

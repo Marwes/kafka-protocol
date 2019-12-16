@@ -119,6 +119,8 @@ impl<'i> crate::Encode for MetadataResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 8;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Brokers<'i> {
     pub node_id: i32,

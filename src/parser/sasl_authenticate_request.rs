@@ -20,3 +20,5 @@ impl<'i> crate::Encode for SaslAuthenticateRequest<'i> {
         self.auth_bytes.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 1;

@@ -36,3 +36,5 @@ impl<'i> crate::Encode for HeartbeatRequest<'i> {
         self.group_instance_id.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 3;

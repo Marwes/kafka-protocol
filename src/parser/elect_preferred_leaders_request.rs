@@ -38,6 +38,8 @@ impl<'i> crate::Encode for ElectPreferredLeadersRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 0;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct TopicPartitions<'i> {
     pub topic: &'i str,

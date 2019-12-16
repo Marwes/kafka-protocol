@@ -44,6 +44,8 @@ impl<'i> crate::Encode for OffsetForLeaderEpochResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 3;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions {
     pub error_code: i16,

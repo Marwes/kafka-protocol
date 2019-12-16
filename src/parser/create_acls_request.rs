@@ -53,6 +53,8 @@ impl<'i> crate::Encode for CreateAclsRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 1;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Creations<'i> {
     pub resource_type: i8,

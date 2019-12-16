@@ -40,6 +40,8 @@ impl<'i> crate::Encode for CreatePartitionsResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 1;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct TopicErrors<'i> {
     pub topic: &'i str,

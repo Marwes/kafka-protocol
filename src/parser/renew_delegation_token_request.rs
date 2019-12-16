@@ -26,3 +26,5 @@ impl<'i> crate::Encode for RenewDelegationTokenRequest<'i> {
         self.renew_time_period.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 1;

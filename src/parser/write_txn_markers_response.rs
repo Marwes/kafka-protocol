@@ -44,6 +44,8 @@ impl<'i> crate::Encode for WriteTxnMarkersResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 0;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions {
     pub partition: i32,

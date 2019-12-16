@@ -27,3 +27,5 @@ impl<'i> crate::Encode for InitProducerIdRequest<'i> {
         self.transaction_timeout_ms.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 1;

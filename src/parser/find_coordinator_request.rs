@@ -22,3 +22,5 @@ impl<'i> crate::Encode for FindCoordinatorRequest<'i> {
         self.key_type.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 2;

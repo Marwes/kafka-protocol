@@ -44,6 +44,8 @@ impl crate::Encode for ApiVersionsResponse {
     }
 }
 
+pub const VERSION: i16 = 2;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ApiVersions {
     pub api_key: i16,

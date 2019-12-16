@@ -111,6 +111,8 @@ impl<'i> crate::Encode for UpdateMetadataRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 5;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartitionStates {
     pub partition: i32,

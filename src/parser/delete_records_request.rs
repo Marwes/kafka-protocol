@@ -36,6 +36,8 @@ impl<'i> crate::Encode for DeleteRecordsRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 1;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions {
     pub partition: i32,

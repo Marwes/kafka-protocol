@@ -45,6 +45,8 @@ impl<'i> crate::Encode for AddPartitionsToTxnResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 1;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartitionErrors {
     pub partition: i32,

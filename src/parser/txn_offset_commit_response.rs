@@ -41,6 +41,8 @@ impl<'i> crate::Encode for TxnOffsetCommitResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 2;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions {
     pub partition: i32,

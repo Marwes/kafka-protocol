@@ -47,6 +47,8 @@ impl<'i> crate::Encode for ListOffsetsResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 5;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartitionResponses {
     pub partition: i32,

@@ -33,6 +33,8 @@ impl<'i> crate::Encode for OffsetFetchRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 5;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions {
     pub partition: i32,

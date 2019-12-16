@@ -54,6 +54,8 @@ impl<'i> crate::Encode for ProduceRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 7;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Data<'i> {
     pub partition: i32,

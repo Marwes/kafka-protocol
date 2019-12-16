@@ -54,3 +54,5 @@ impl<'i> crate::Encode for FindCoordinatorResponse<'i> {
         self.port.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 2;

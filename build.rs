@@ -296,6 +296,17 @@ mod regenerate {
                     "}",
                 ].nest(4),
                 "}",
+                if let Some(version) = self.version {
+                    chain![arena;
+                        arena.line(),
+                        arena.line(),
+                        "pub const VERSION: i16 = ",
+                        arena.as_string(version),
+                        ";",
+                    ]
+                } else {
+                    arena.nil()
+                }
             ]
         }
 

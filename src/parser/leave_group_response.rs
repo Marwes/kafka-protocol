@@ -25,3 +25,5 @@ impl crate::Encode for LeaveGroupResponse {
         self.error_code.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 2;

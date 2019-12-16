@@ -49,6 +49,8 @@ impl<'i> crate::Encode for ProduceResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 7;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartitionResponses {
     pub partition: i32,

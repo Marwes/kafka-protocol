@@ -26,3 +26,5 @@ impl<'i> crate::Encode for ExpireDelegationTokenRequest<'i> {
         self.expiry_time_period.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 1;

@@ -25,3 +25,5 @@ impl<'i> crate::Encode for DeleteTopicsRequest<'i> {
         self.timeout_ms.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 3;

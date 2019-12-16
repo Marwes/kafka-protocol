@@ -36,6 +36,8 @@ impl<'i> crate::Encode for DescribeConfigsRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 2;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Resources<'i> {
     pub resource_type: i8,

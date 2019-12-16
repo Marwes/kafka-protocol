@@ -68,6 +68,8 @@ impl<'i> crate::Encode for JoinGroupRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 5;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Protocols<'i> {
     pub name: &'i str,

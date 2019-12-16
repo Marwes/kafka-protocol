@@ -53,6 +53,8 @@ impl<'i> crate::Encode for DeleteAclsRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 1;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Filters<'i> {
     pub resource_type: i8,

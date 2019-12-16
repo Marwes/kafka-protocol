@@ -48,6 +48,8 @@ impl<'i> crate::Encode for ElectPreferredLeadersResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 0;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartitionResult<'i> {
     pub partition_id: i32,

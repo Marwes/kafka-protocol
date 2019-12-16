@@ -32,3 +32,5 @@ impl<'i> crate::Encode for SyncGroupResponse<'i> {
         self.assignment.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 3;

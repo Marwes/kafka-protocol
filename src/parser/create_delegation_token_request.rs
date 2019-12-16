@@ -34,6 +34,8 @@ impl<'i> crate::Encode for CreateDelegationTokenRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 1;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Renewers<'i> {
     pub principal_type: &'i str,

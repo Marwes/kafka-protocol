@@ -25,3 +25,5 @@ impl crate::Encode for ControlledShutdownRequest {
         self.broker_epoch.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 2;

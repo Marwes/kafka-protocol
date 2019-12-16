@@ -27,3 +27,5 @@ impl<'i> crate::Encode for DescribeGroupsRequest<'i> {
         self.include_authorized_operations.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 3;

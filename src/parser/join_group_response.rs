@@ -74,6 +74,8 @@ impl<'i> crate::Encode for JoinGroupResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 5;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Members<'i> {
     pub member_id: &'i str,

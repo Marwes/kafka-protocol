@@ -45,6 +45,8 @@ impl<'i> crate::Encode for WriteTxnMarkersRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 0;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Topics<'i> {
     pub topic: &'i str,

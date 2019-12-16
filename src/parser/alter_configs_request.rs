@@ -48,6 +48,8 @@ impl<'i> crate::Encode for AlterConfigsRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 1;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConfigEntries<'i> {
     pub config_name: &'i str,

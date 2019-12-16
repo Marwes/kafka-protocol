@@ -20,3 +20,5 @@ impl<'i> crate::Encode for DeleteGroupsRequest<'i> {
         self.groups.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 1;

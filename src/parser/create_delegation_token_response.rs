@@ -78,6 +78,8 @@ impl<'i> crate::Encode for CreateDelegationTokenResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 1;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Owner<'i> {
     pub principal_type: &'i str,

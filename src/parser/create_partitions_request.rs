@@ -48,6 +48,8 @@ impl<'i> crate::Encode for CreatePartitionsRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 1;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct NewPartitions<'i> {
     pub count: i32,

@@ -36,3 +36,5 @@ impl<'i> crate::Encode for AddOffsetsToTxnRequest<'i> {
         self.group_id.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 1;

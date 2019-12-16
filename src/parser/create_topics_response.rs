@@ -38,6 +38,8 @@ impl<'i> crate::Encode for CreateTopicsResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 3;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Topics<'i> {
     pub name: &'i str,

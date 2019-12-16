@@ -93,6 +93,8 @@ impl<'i> crate::Encode for LeaderAndIsrRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 2;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartitionStates {
     pub partition: i32,

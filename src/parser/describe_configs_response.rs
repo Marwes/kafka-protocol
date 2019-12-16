@@ -83,6 +83,8 @@ impl<'i> crate::Encode for DescribeConfigsResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 2;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConfigSynonyms<'i> {
     pub config_name: &'i str,

@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate combine;
-
 use std::{convert::TryFrom, mem, str};
 
 use combine::{
@@ -268,18 +265,30 @@ where
         &mut self,
         request: ProduceRequest<'_>,
     ) -> io::Result<ProduceResponse<'_>> {
-        self.call(request, ApiKey::Produce, produce_response())
-            .await
+        self.call(
+            request,
+            ApiKey::Produce,
+            crate::parser::produce_request::VERSION,
+            produce_response(),
+        )
+        .await
     }
 
     pub async fn fetch(&mut self, request: FetchRequest<'_>) -> io::Result<FetchResponse<'_>> {
-        self.call(request, ApiKey::Fetch, fetch_response()).await
+        self.call(
+            request,
+            ApiKey::Fetch,
+            crate::parser::fetch_request::VERSION,
+            fetch_response(),
+        )
+        .await
     }
 
     async fn call<'i, R, P, O>(
         &'i mut self,
         request: R,
         api_key: ApiKey,
+        api_version: i16,
         mut parser: P,
     ) -> io::Result<O>
     where
@@ -290,11 +299,13 @@ where
 
         self.buf.clear();
 
-        // RequestHeader {
-        //     api_key: api_key as _,
-        //     api_version,
-        // }
-        // .encode(&mut self.buf);
+        RequestHeader {
+            api_key: api_key as _,
+            api_version,
+            correlation_id: 0,
+            client_id: None,
+        }
+        .encode(&mut self.buf);
         request.encode(&mut self.buf);
 
         self.io.write_all(&self.buf).await?;

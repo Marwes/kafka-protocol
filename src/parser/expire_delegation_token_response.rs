@@ -33,3 +33,5 @@ impl crate::Encode for ExpireDelegationTokenResponse {
         self.throttle_time_ms.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 1;

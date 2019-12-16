@@ -111,6 +111,8 @@ impl<'i> crate::Encode for FetchRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 11;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions {
     pub partition: i32,

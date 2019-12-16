@@ -36,3 +36,5 @@ impl<'i> crate::Encode for SaslAuthenticateResponse<'i> {
         self.session_lifetime_ms.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 1;

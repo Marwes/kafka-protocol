@@ -65,6 +65,8 @@ impl<'i> crate::Encode for DescribeAclsResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 1;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Acls<'i> {
     pub principal: &'i str,

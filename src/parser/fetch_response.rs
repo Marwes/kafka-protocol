@@ -97,6 +97,8 @@ impl<'i> crate::Encode for FetchResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 11;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct AbortedTransactions {
     pub producer_id: i64,

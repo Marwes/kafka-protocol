@@ -56,6 +56,8 @@ impl<'i> crate::Encode for CreateTopicsRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 3;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Assignments {
     pub partition_index: i32,

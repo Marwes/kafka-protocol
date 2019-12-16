@@ -55,6 +55,8 @@ impl<'i> crate::Encode for SyncGroupRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 3;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Assignments<'i> {
     pub member_id: &'i str,

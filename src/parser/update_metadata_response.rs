@@ -20,3 +20,5 @@ impl crate::Encode for UpdateMetadataResponse {
         self.error_code.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 5;

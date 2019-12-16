@@ -67,3 +67,5 @@ impl<'i> crate::Encode for DescribeAclsRequest<'i> {
         self.permission_type.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 1;

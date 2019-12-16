@@ -71,6 +71,8 @@ impl<'i> crate::Encode for DescribeGroupsResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 3;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Members<'i> {
     pub member_id: &'i str,

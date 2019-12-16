@@ -68,6 +68,8 @@ impl<'i> crate::Encode for OffsetCommitRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 7;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions<'i> {
     pub partition_index: i32,

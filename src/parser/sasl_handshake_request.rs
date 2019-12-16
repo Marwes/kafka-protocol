@@ -20,3 +20,5 @@ impl<'i> crate::Encode for SaslHandshakeRequest<'i> {
         self.mechanism.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 1;

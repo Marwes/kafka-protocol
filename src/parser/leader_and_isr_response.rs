@@ -36,6 +36,8 @@ impl<'i> crate::Encode for LeaderAndIsrResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 2;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions<'i> {
     pub topic: &'i str,

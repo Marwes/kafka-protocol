@@ -37,6 +37,8 @@ impl<'i> crate::Encode for AlterConfigsResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 1;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Resources<'i> {
     pub error_code: i16,

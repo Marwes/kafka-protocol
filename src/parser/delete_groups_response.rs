@@ -37,6 +37,8 @@ impl<'i> crate::Encode for DeleteGroupsResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 1;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct GroupErrorCodes<'i> {
     pub group_id: &'i str,

@@ -25,3 +25,5 @@ impl crate::Encode for AddOffsetsToTxnResponse {
         self.error_code.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 1;

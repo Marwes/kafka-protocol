@@ -50,6 +50,8 @@ impl<'i> crate::Encode for MetadataRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 8;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Topics<'i> {
     pub name: &'i str,

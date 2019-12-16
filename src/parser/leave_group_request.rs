@@ -25,3 +25,5 @@ impl<'i> crate::Encode for LeaveGroupRequest<'i> {
         self.member_id.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 2;

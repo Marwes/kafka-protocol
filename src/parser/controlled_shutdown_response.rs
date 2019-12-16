@@ -38,6 +38,8 @@ impl<'i> crate::Encode for ControlledShutdownResponse<'i> {
     }
 }
 
+pub const VERSION: i16 = 2;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct RemainingPartitions<'i> {
     pub topic_name: &'i str,

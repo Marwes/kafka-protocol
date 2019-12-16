@@ -36,3 +36,5 @@ impl crate::Encode for InitProducerIdResponse {
         self.producer_epoch.encode(writer);
     }
 }
+
+pub const VERSION: i16 = 1;

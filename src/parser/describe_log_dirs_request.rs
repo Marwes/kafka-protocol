@@ -24,6 +24,8 @@ impl<'i> crate::Encode for DescribeLogDirsRequest<'i> {
     }
 }
 
+pub const VERSION: i16 = 1;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Topics<'i> {
     pub topic: &'i str,
