@@ -4,14 +4,15 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (many(
+    (array(|| {
         (
             be_i64(),
             be_i16(),
             any().map(|b| b != 0),
-            many(
-                (string(), many(be_i32())).map(|(topic, partitions)| Topics { topic, partitions }),
-            ),
+            array(|| {
+                (string(), array(|| be_i32()))
+                    .map(|(topic, partitions)| Topics { topic, partitions })
+            }),
             be_i32(),
         )
             .map(
@@ -24,8 +25,8 @@ where
                         coordinator_epoch,
                     }
                 },
-            ),
-    ),)
+            )
+    }),)
         .map(|(transaction_markers,)| WriteTxnMarkersRequest {
             transaction_markers,
         })

@@ -6,12 +6,12 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (be_i16(), nullable_string()).map(|(error_code, error_message)| CreationResponses {
                 error_code,
                 error_message,
-            }),
-        ),
+            })
+        }),
     )
         .map(
             |(throttle_time_ms, creation_responses)| CreateAclsResponse {

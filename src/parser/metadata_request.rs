@@ -5,7 +5,7 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        many((string(),).map(|(name,)| Topics { name })),
+        array(|| (string(),).map(|(name,)| Topics { name })),
         any().map(|b| b != 0),
         any().map(|b| b != 0),
         any().map(|b| b != 0),

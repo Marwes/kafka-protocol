@@ -7,12 +7,12 @@ where
 {
     (
         be_i16(),
-        many(
+        array(|| {
             (string(), be_i32()).map(|(topic_name, partition_index)| RemainingPartitions {
                 topic_name,
                 partition_index,
-            }),
-        ),
+            })
+        }),
     )
         .map(
             |(error_code, remaining_partitions)| ControlledShutdownResponse {

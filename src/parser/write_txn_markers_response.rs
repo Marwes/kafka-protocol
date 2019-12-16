@@ -4,27 +4,27 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (many(
+    (array(|| {
         (
             be_i64(),
-            many(
+            array(|| {
                 (
                     string(),
-                    many(
+                    array(|| {
                         (be_i32(), be_i16()).map(|(partition, error_code)| Partitions {
                             partition,
                             error_code,
-                        }),
-                    ),
+                        })
+                    }),
                 )
-                    .map(|(topic, partitions)| Topics { topic, partitions }),
-            ),
+                    .map(|(topic, partitions)| Topics { topic, partitions })
+            }),
         )
             .map(|(producer_id, topics)| TransactionMarkers {
                 producer_id,
                 topics,
-            }),
-    ),)
+            })
+    }),)
         .map(|(transaction_markers,)| WriteTxnMarkersResponse {
             transaction_markers,
         })

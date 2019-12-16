@@ -7,19 +7,21 @@ where
     (
         be_i32(),
         be_i8(),
-        many(
+        array(|| {
             (
                 string(),
-                many((be_i32(), be_i32(), be_i64()).map(
-                    |(partition, current_leader_epoch, timestamp)| Partitions {
-                        partition,
-                        current_leader_epoch,
-                        timestamp,
-                    },
-                )),
+                array(|| {
+                    (be_i32(), be_i32(), be_i64()).map(
+                        |(partition, current_leader_epoch, timestamp)| Partitions {
+                            partition,
+                            current_leader_epoch,
+                            timestamp,
+                        },
+                    )
+                }),
             )
-                .map(|(topic, partitions)| Topics { topic, partitions }),
-        ),
+                .map(|(topic, partitions)| Topics { topic, partitions })
+        }),
     )
         .map(|(replica_id, isolation_level, topics)| ListOffsetsRequest {
             replica_id,

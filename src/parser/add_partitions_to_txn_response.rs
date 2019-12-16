@@ -7,21 +7,21 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (
                 string(),
-                many(
+                array(|| {
                     (be_i32(), be_i16()).map(|(partition, error_code)| PartitionErrors {
                         partition,
                         error_code,
-                    }),
-                ),
+                    })
+                }),
             )
                 .map(|(topic, partition_errors)| Errors {
                     topic,
                     partition_errors,
-                }),
-        ),
+                })
+        }),
     )
         .map(|(throttle_time_ms, errors)| AddPartitionsToTxnResponse {
             throttle_time_ms,

@@ -8,10 +8,10 @@ where
         be_i32(),
         be_i16(),
         be_i32(),
-        many(
+        array(|| {
             (
                 string(),
-                many(
+                array(|| {
                     (
                         (
                             be_i32(),
@@ -19,12 +19,14 @@ where
                             be_i64(),
                             be_i64(),
                             be_i64(),
-                            many((be_i64(), be_i64()).map(|(producer_id, first_offset)| {
-                                AbortedTransactions {
-                                    producer_id,
-                                    first_offset,
-                                }
-                            })),
+                            array(|| {
+                                (be_i64(), be_i64()).map(|(producer_id, first_offset)| {
+                                    AbortedTransactions {
+                                        producer_id,
+                                        first_offset,
+                                    }
+                                })
+                            }),
                             be_i32(),
                         )
                             .map(
@@ -55,14 +57,14 @@ where
                                 partition_header,
                                 record_set,
                             }
-                        }),
-                ),
+                        })
+                }),
             )
                 .map(|(topic, partition_responses)| Responses {
                     topic,
                     partition_responses,
-                }),
-        ),
+                })
+        }),
     )
         .map(
             |(throttle_time_ms, error_code, session_id, responses)| FetchResponse {

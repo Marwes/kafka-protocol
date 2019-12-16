@@ -9,20 +9,22 @@ where
         string(),
         be_i64(),
         be_i16(),
-        many(
+        array(|| {
             (
                 string(),
-                many((be_i32(), be_i64(), be_i32(), nullable_string()).map(
-                    |(partition, offset, leader_epoch, metadata)| Partitions {
-                        partition,
-                        offset,
-                        leader_epoch,
-                        metadata,
-                    },
-                )),
+                array(|| {
+                    (be_i32(), be_i64(), be_i32(), nullable_string()).map(
+                        |(partition, offset, leader_epoch, metadata)| Partitions {
+                            partition,
+                            offset,
+                            leader_epoch,
+                            metadata,
+                        },
+                    )
+                }),
             )
-                .map(|(topic, partitions)| Topics { topic, partitions }),
-        ),
+                .map(|(topic, partitions)| Topics { topic, partitions })
+        }),
     )
         .map(
             |(transactional_id, group_id, producer_id, producer_epoch, topics)| {

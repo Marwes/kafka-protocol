@@ -7,7 +7,7 @@ where
 {
     (
         be_i16(),
-        many(
+        array(|| {
             (
                 (string(), string()).map(|(principal_type, name)| Owner {
                     principal_type,
@@ -18,10 +18,12 @@ where
                 be_i64(),
                 string(),
                 bytes(),
-                many((string(), string()).map(|(principal_type, name)| Renewers {
-                    principal_type,
-                    name,
-                })),
+                array(|| {
+                    (string(), string()).map(|(principal_type, name)| Renewers {
+                        principal_type,
+                        name,
+                    })
+                }),
             )
                 .map(
                     |(
@@ -43,8 +45,8 @@ where
                             renewers,
                         }
                     },
-                ),
-        ),
+                )
+        }),
         be_i32(),
     )
         .map(

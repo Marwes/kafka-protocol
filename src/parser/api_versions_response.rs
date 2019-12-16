@@ -6,13 +6,13 @@ where
 {
     (
         be_i16(),
-        many(
+        array(|| {
             (be_i16(), be_i16(), be_i16()).map(|(api_key, min_version, max_version)| ApiVersions {
                 api_key,
                 min_version,
                 max_version,
-            }),
-        ),
+            })
+        }),
         be_i32(),
     )
         .map(

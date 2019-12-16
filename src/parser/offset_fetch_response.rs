@@ -6,10 +6,10 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (
                 string(),
-                many(
+                array(|| {
                     (be_i32(), be_i64(), be_i32(), nullable_string(), be_i16()).map(
                         |(partition, offset, leader_epoch, metadata, error_code)| {
                             PartitionResponses {
@@ -20,14 +20,14 @@ where
                                 error_code,
                             }
                         },
-                    ),
-                ),
+                    )
+                }),
             )
                 .map(|(topic, partition_responses)| Responses {
                     topic,
                     partition_responses,
-                }),
-        ),
+                })
+        }),
         be_i16(),
     )
         .map(

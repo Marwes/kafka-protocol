@@ -5,7 +5,6 @@ use combine::{
     error::StreamError,
     parser::{
         range,
-        repeat::many,
         token::{any, value},
     },
     stream::StreamErrorFor,
@@ -65,6 +64,24 @@ where
             range::take(i).map(Some).left()
         } else {
             value(None).right()
+        }
+    })
+}
+
+fn array<'i, I, P>(mut elem_parser: impl FnMut() -> P) -> impl Parser<I, Output = Vec<P::Output>>
+where
+    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
+    P: Parser<I>,
+{
+    be_i32().then_partial(move |&mut len| {
+        if let Ok(len) = usize::try_from(len) {
+            combine::parser::repeat::count_min_max(len, len, elem_parser()).left()
+        } else {
+            combine::parser::function::parser(|_| {
+                Ok((Vec::new(), combine::error::Consumed::Empty(())))
+            })
+            .right()
         }
     })
 }
@@ -327,7 +344,6 @@ where
             request.encode(&mut self.buf);
 
             self.io.write_all(&self.buf).await?;
-            eprintln!("Written");
         }
 
         self.buf.clear();
@@ -335,7 +351,6 @@ where
         self.buf.reserve(mem::size_of::<i32>());
 
         while self.buf.len() < mem::size_of::<i32>() {
-            eprintln!("Read");
             if self.io.read_buf(&mut self.buf).await? == 0 {
                 return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
             }
@@ -343,20 +358,24 @@ where
 
         let response_len = (&self.buf[..mem::size_of::<i32>()]).get_i32();
         let response_len = usize::try_from(response_len).expect("Valid len");
-        eprintln!("Done read len {}", response_len);
 
         self.buf.reserve(self.buf.len() + response_len);
 
         while self.buf.len() < response_len + mem::size_of::<i32>() {
-            eprintln!("Read response {}", self.buf.len());
             if self.io.read_buf(&mut self.buf).await? == 0 {
                 return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
             }
         }
 
-        let (response, _) = parser
+        let (_header_response, rest) = crate::parser::response_header::response_header()
             .parse(&self.buf[mem::size_of::<i32>()..])
-            .expect("Invalid response");
+            .expect("Invalid header");
+        let (response, rest) = parser.parse(rest).expect("Invalid response");
+        assert!(
+            rest.is_empty(),
+            "{} bytes remaining in response",
+            rest.len()
+        );
 
         Ok(response)
     }
@@ -373,10 +392,11 @@ mod tests {
         let mut client = Client::connect((IpAddr::from([127, 0, 0, 1]), 9092))
             .await
             .unwrap();
-        client
+        let api_versions_response = client
             .api_versions(crate::parser::api_versions_request::ApiVersionsRequest {})
             .await
             .unwrap();
+        eprintln!("{:#?}", api_versions_response);
         client
             .produce(ProduceRequest {
                 acks: 1,

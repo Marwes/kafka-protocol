@@ -11,7 +11,7 @@ where
         string(),
         nullable_string(),
         string(),
-        many((string(), bytes()).map(|(name, metadata)| Protocols { name, metadata })),
+        array(|| (string(), bytes()).map(|(name, metadata)| Protocols { name, metadata })),
     )
         .map(
             |(

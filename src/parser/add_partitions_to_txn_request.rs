@@ -9,7 +9,9 @@ where
         string(),
         be_i64(),
         be_i16(),
-        many((string(), many(be_i32())).map(|(topic, partitions)| Topics { topic, partitions })),
+        array(|| {
+            (string(), array(|| be_i32())).map(|(topic, partitions)| Topics { topic, partitions })
+        }),
     )
         .map(|(transactional_id, producer_id, producer_epoch, topics)| {
             AddPartitionsToTxnRequest {

@@ -8,19 +8,19 @@ where
         be_i32(),
         be_i32(),
         be_i64(),
-        many(
+        array(|| {
             (
                 string(),
-                many(
+                array(|| {
                     (
                         be_i32(),
                         be_i32(),
                         be_i32(),
                         be_i32(),
-                        many(be_i32()),
+                        array(|| be_i32()),
                         be_i32(),
-                        many(be_i32()),
-                        many(be_i32()),
+                        array(|| be_i32()),
+                        array(|| be_i32()),
                     )
                         .map(
                             |(
@@ -44,33 +44,35 @@ where
                                     offline_replicas,
                                 }
                             },
-                        ),
-                ),
+                        )
+                }),
             )
                 .map(|(topic, partition_states)| TopicStates {
                     topic,
                     partition_states,
-                }),
-        ),
-        many(
+                })
+        }),
+        array(|| {
             (
                 be_i32(),
-                many((be_i32(), string(), string(), be_i16()).map(
-                    |(port, host, listener_name, security_protocol_type)| EndPoints {
-                        port,
-                        host,
-                        listener_name,
-                        security_protocol_type,
-                    },
-                )),
+                array(|| {
+                    (be_i32(), string(), string(), be_i16()).map(
+                        |(port, host, listener_name, security_protocol_type)| EndPoints {
+                            port,
+                            host,
+                            listener_name,
+                            security_protocol_type,
+                        },
+                    )
+                }),
                 nullable_string(),
             )
                 .map(|(id, end_points, rack)| LiveBrokers {
                     id,
                     end_points,
                     rack,
-                }),
-        ),
+                })
+        }),
     )
         .map(
             |(controller_id, controller_epoch, broker_epoch, topic_states, live_brokers)| {

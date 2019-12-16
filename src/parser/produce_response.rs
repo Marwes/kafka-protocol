@@ -5,26 +5,34 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        many(
+        array(|| {
             (
                 string(),
-                many((be_i32(), be_i16(), be_i64(), be_i64(), be_i64()).map(
-                    |(partition, error_code, base_offset, log_append_time, log_start_offset)| {
-                        PartitionResponses {
+                array(|| {
+                    (be_i32(), be_i16(), be_i64(), be_i64(), be_i64()).map(
+                        |(
                             partition,
                             error_code,
                             base_offset,
                             log_append_time,
                             log_start_offset,
-                        }
-                    },
-                )),
+                        )| {
+                            PartitionResponses {
+                                partition,
+                                error_code,
+                                base_offset,
+                                log_append_time,
+                                log_start_offset,
+                            }
+                        },
+                    )
+                }),
             )
                 .map(|(topic, partition_responses)| Responses {
                     topic,
                     partition_responses,
-                }),
-        ),
+                })
+        }),
         be_i32(),
     )
         .map(|(responses, throttle_time_ms)| ProduceResponse {

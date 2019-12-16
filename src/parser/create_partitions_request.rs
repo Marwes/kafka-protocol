@@ -5,17 +5,17 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        many(
+        array(|| {
             (
                 string(),
-                (be_i32(), many(bytes()))
+                (be_i32(), array(|| bytes()))
                     .map(|(count, assignment)| NewPartitions { count, assignment }),
             )
                 .map(|(topic, new_partitions)| TopicPartitions {
                     topic,
                     new_partitions,
-                }),
-        ),
+                })
+        }),
         be_i32(),
         any().map(|b| b != 0),
     )

@@ -6,15 +6,15 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (string(), be_i16(), nullable_string()).map(|(topic, error_code, error_message)| {
                 TopicErrors {
                     topic,
                     error_code,
                     error_message,
                 }
-            }),
-        ),
+            })
+        }),
     )
         .map(
             |(throttle_time_ms, topic_errors)| CreatePartitionsResponse {

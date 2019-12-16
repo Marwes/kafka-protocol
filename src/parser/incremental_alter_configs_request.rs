@@ -6,24 +6,26 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        many(
+        array(|| {
             (
                 be_i8(),
                 string(),
-                many((string(), be_i8(), nullable_string()).map(
-                    |(name, config_operation, value)| Configs {
-                        name,
-                        config_operation,
-                        value,
-                    },
-                )),
+                array(|| {
+                    (string(), be_i8(), nullable_string()).map(|(name, config_operation, value)| {
+                        Configs {
+                            name,
+                            config_operation,
+                            value,
+                        }
+                    })
+                }),
             )
                 .map(|(resource_type, resource_name, configs)| Resources {
                     resource_type,
                     resource_name,
                     configs,
-                }),
-        ),
+                })
+        }),
         any().map(|b| b != 0),
     )
         .map(

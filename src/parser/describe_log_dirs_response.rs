@@ -6,31 +6,33 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (
                 be_i16(),
                 string(),
-                many(
+                array(|| {
                     (
                         string(),
-                        many((be_i32(), be_i64(), be_i64(), any().map(|b| b != 0)).map(
-                            |(partition, size, offset_lag, is_future)| Partitions {
-                                partition,
-                                size,
-                                offset_lag,
-                                is_future,
-                            },
-                        )),
+                        array(|| {
+                            (be_i32(), be_i64(), be_i64(), any().map(|b| b != 0)).map(
+                                |(partition, size, offset_lag, is_future)| Partitions {
+                                    partition,
+                                    size,
+                                    offset_lag,
+                                    is_future,
+                                },
+                            )
+                        }),
                     )
-                        .map(|(topic, partitions)| Topics { topic, partitions }),
-                ),
+                        .map(|(topic, partitions)| Topics { topic, partitions })
+                }),
             )
                 .map(|(error_code, log_dir, topics)| LogDirs {
                     error_code,
                     log_dir,
                     topics,
-                }),
-        ),
+                })
+        }),
     )
         .map(|(throttle_time_ms, log_dirs)| DescribeLogDirsResponse {
             throttle_time_ms,

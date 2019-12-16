@@ -6,26 +6,28 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (
                 be_i16(),
                 nullable_string(),
                 be_i8(),
                 string(),
-                many(
+                array(|| {
                     (
                         string(),
                         nullable_string(),
                         any().map(|b| b != 0),
                         be_i8(),
                         any().map(|b| b != 0),
-                        many((string(), nullable_string(), be_i8()).map(
-                            |(config_name, config_value, config_source)| ConfigSynonyms {
-                                config_name,
-                                config_value,
-                                config_source,
-                            },
-                        )),
+                        array(|| {
+                            (string(), nullable_string(), be_i8()).map(
+                                |(config_name, config_value, config_source)| ConfigSynonyms {
+                                    config_name,
+                                    config_value,
+                                    config_source,
+                                },
+                            )
+                        }),
                     )
                         .map(
                             |(
@@ -45,8 +47,8 @@ where
                                     config_synonyms,
                                 }
                             },
-                        ),
-                ),
+                        )
+                }),
             )
                 .map(
                     |(error_code, error_message, resource_type, resource_name, config_entries)| {
@@ -58,8 +60,8 @@ where
                             config_entries,
                         }
                     },
-                ),
-        ),
+                )
+        }),
     )
         .map(|(throttle_time_ms, resources)| DescribeConfigsResponse {
             throttle_time_ms,

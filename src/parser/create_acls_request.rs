@@ -4,7 +4,7 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (many(
+    (array(|| {
         (
             be_i8(),
             string(),
@@ -34,8 +34,8 @@ where
                         permission_type,
                     }
                 },
-            ),
-    ),)
+            )
+    }),)
         .map(|(creations,)| CreateAclsRequest { creations })
 }
 

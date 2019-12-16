@@ -9,12 +9,12 @@ where
         be_i32(),
         be_i64(),
         any().map(|b| b != 0),
-        many(
-            (string(), many(be_i32())).map(|(topic, partition_ids)| Partitions {
+        array(|| {
+            (string(), array(|| be_i32())).map(|(topic, partition_ids)| Partitions {
                 topic,
                 partition_ids,
-            }),
-        ),
+            })
+        }),
     )
         .map(
             |(controller_id, controller_epoch, broker_epoch, delete_partitions, partitions)| {

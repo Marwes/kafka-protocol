@@ -7,20 +7,22 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (
                 string(),
-                many((be_i16(), be_i32(), be_i32(), be_i64()).map(
-                    |(error_code, partition, leader_epoch, end_offset)| Partitions {
-                        error_code,
-                        partition,
-                        leader_epoch,
-                        end_offset,
-                    },
-                )),
+                array(|| {
+                    (be_i16(), be_i32(), be_i32(), be_i64()).map(
+                        |(error_code, partition, leader_epoch, end_offset)| Partitions {
+                            error_code,
+                            partition,
+                            leader_epoch,
+                            end_offset,
+                        },
+                    )
+                }),
             )
-                .map(|(topic, partitions)| Topics { topic, partitions }),
-        ),
+                .map(|(topic, partitions)| Topics { topic, partitions })
+        }),
     )
         .map(|(throttle_time_ms, topics)| OffsetForLeaderEpochResponse {
             throttle_time_ms,

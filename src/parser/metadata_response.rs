@@ -6,30 +6,32 @@ where
 {
     (
         be_i32(),
-        many((be_i32(), string(), be_i32(), nullable_string()).map(
-            |(node_id, host, port, rack)| Brokers {
-                node_id,
-                host,
-                port,
-                rack,
-            },
-        )),
+        array(|| {
+            (be_i32(), string(), be_i32(), nullable_string()).map(|(node_id, host, port, rack)| {
+                Brokers {
+                    node_id,
+                    host,
+                    port,
+                    rack,
+                }
+            })
+        }),
         nullable_string(),
         be_i32(),
-        many(
+        array(|| {
             (
                 be_i16(),
                 string(),
                 any().map(|b| b != 0),
-                many(
+                array(|| {
                     (
                         be_i16(),
                         be_i32(),
                         be_i32(),
                         be_i32(),
-                        many(be_i32()),
-                        many(be_i32()),
-                        many(be_i32()),
+                        array(|| be_i32()),
+                        array(|| be_i32()),
+                        array(|| be_i32()),
                     )
                         .map(
                             |(
@@ -51,8 +53,8 @@ where
                                     offline_replicas,
                                 }
                             },
-                        ),
-                ),
+                        )
+                }),
                 be_i32(),
             )
                 .map(
@@ -65,8 +67,8 @@ where
                             topic_authorized_operations,
                         }
                     },
-                ),
-        ),
+                )
+        }),
         be_i32(),
     )
         .map(

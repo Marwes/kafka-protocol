@@ -5,15 +5,16 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (many(
+    (array(|| {
         (
             string(),
-            many(
-                (string(), many(be_i32())).map(|(topic, partitions)| Topics { topic, partitions }),
-            ),
+            array(|| {
+                (string(), array(|| be_i32()))
+                    .map(|(topic, partitions)| Topics { topic, partitions })
+            }),
         )
-            .map(|(log_dir, topics)| LogDirs { log_dir, topics }),
-    ),)
+            .map(|(log_dir, topics)| LogDirs { log_dir, topics })
+    }),)
         .map(|(log_dirs,)| AlterReplicaLogDirsRequest { log_dirs })
 }
 

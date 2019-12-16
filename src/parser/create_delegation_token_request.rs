@@ -6,10 +6,12 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        many((string(), string()).map(|(principal_type, name)| Renewers {
-            principal_type,
-            name,
-        })),
+        array(|| {
+            (string(), string()).map(|(principal_type, name)| Renewers {
+                principal_type,
+                name,
+            })
+        }),
         be_i64(),
     )
         .map(|(renewers, max_life_time)| CreateDelegationTokenRequest {

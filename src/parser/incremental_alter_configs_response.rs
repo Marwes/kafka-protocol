@@ -7,14 +7,16 @@ where
 {
     (
         be_i32(),
-        many((be_i16(), nullable_string(), be_i8(), string()).map(
-            |(error_code, error_message, resource_type, resource_name)| Responses {
-                error_code,
-                error_message,
-                resource_type,
-                resource_name,
-            },
-        )),
+        array(|| {
+            (be_i16(), nullable_string(), be_i8(), string()).map(
+                |(error_code, error_message, resource_type, resource_name)| Responses {
+                    error_code,
+                    error_message,
+                    resource_type,
+                    resource_name,
+                },
+            )
+        }),
     )
         .map(
             |(throttle_time_ms, responses)| IncrementalAlterConfigsResponse {

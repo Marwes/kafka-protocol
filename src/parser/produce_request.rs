@@ -8,18 +8,18 @@ where
         nullable_string(),
         be_i16(),
         be_i32(),
-        many(
+        array(|| {
             (
                 string(),
-                many(
+                array(|| {
                     (be_i32(), nullable_bytes()).map(|(partition, record_set)| Data {
                         partition,
                         record_set,
-                    }),
-                ),
+                    })
+                }),
             )
-                .map(|(topic, data)| TopicData { topic, data }),
-        ),
+                .map(|(topic, data)| TopicData { topic, data })
+        }),
     )
         .map(
             |(transactional_id, acks, timeout, topic_data)| ProduceRequest {

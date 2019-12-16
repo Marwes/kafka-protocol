@@ -6,11 +6,11 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (
                 be_i16(),
                 nullable_string(),
-                many(
+                array(|| {
                     (
                         be_i16(),
                         nullable_string(),
@@ -46,8 +46,8 @@ where
                                     permission_type,
                                 }
                             },
-                        ),
-                ),
+                        )
+                }),
             )
                 .map(
                     |(error_code, error_message, matching_acls)| FilterResponses {
@@ -55,8 +55,8 @@ where
                         error_message,
                         matching_acls,
                     },
-                ),
-        ),
+                )
+        }),
     )
         .map(|(throttle_time_ms, filter_responses)| DeleteAclsResponse {
             throttle_time_ms,

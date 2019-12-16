@@ -6,15 +6,15 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (string(), be_i16(), nullable_string()).map(|(name, error_code, error_message)| {
                 Topics {
                     name,
                     error_code,
                     error_message,
                 }
-            }),
-        ),
+            })
+        }),
     )
         .map(|(throttle_time_ms, topics)| CreateTopicsResponse {
             throttle_time_ms,

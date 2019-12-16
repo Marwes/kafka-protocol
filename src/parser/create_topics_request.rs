@@ -5,18 +5,22 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        many(
+        array(|| {
             (
                 string(),
                 be_i32(),
                 be_i16(),
-                many(
-                    (be_i32(), many(be_i32())).map(|(partition_index, broker_ids)| Assignments {
-                        partition_index,
-                        broker_ids,
-                    }),
-                ),
-                many((string(), nullable_string()).map(|(name, value)| Configs { name, value })),
+                array(|| {
+                    (be_i32(), array(|| be_i32())).map(|(partition_index, broker_ids)| {
+                        Assignments {
+                            partition_index,
+                            broker_ids,
+                        }
+                    })
+                }),
+                array(|| {
+                    (string(), nullable_string()).map(|(name, value)| Configs { name, value })
+                }),
             )
                 .map(
                     |(name, num_partitions, replication_factor, assignments, configs)| Topics {
@@ -26,8 +30,8 @@ where
                         assignments,
                         configs,
                     },
-                ),
-        ),
+                )
+        }),
         be_i32(),
         any().map(|b| b != 0),
     )

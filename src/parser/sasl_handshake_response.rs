@@ -4,7 +4,7 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (be_i16(), many(string())).map(|(error_code, mechanisms)| SaslHandshakeResponse {
+    (be_i16(), array(|| string())).map(|(error_code, mechanisms)| SaslHandshakeResponse {
         error_code,
         mechanisms,
     })

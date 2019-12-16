@@ -12,33 +12,35 @@ where
         be_i8(),
         be_i32(),
         be_i32(),
-        many(
+        array(|| {
             (
                 string(),
-                many((be_i32(), be_i32(), be_i64(), be_i64(), be_i32()).map(
-                    |(
-                        partition,
-                        current_leader_epoch,
-                        fetch_offset,
-                        log_start_offset,
-                        partition_max_bytes,
-                    )| {
-                        Partitions {
+                array(|| {
+                    (be_i32(), be_i32(), be_i64(), be_i64(), be_i32()).map(
+                        |(
                             partition,
                             current_leader_epoch,
                             fetch_offset,
                             log_start_offset,
                             partition_max_bytes,
-                        }
-                    },
-                )),
+                        )| {
+                            Partitions {
+                                partition,
+                                current_leader_epoch,
+                                fetch_offset,
+                                log_start_offset,
+                                partition_max_bytes,
+                            }
+                        },
+                    )
+                }),
             )
-                .map(|(topic, partitions)| Topics { topic, partitions }),
-        ),
-        many(
-            (string(), many(be_i32()))
-                .map(|(topic, partitions)| ForgottenTopicsData { topic, partitions }),
-        ),
+                .map(|(topic, partitions)| Topics { topic, partitions })
+        }),
+        array(|| {
+            (string(), array(|| be_i32()))
+                .map(|(topic, partitions)| ForgottenTopicsData { topic, partitions })
+        }),
         string(),
     )
         .map(

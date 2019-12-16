@@ -5,12 +5,12 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (many((string(), string()).map(|(principal_type, name)| {
-        Owners {
+    (array(|| {
+        (string(), string()).map(|(principal_type, name)| Owners {
             principal_type,
             name,
-        }
-    })),)
+        })
+    }),)
         .map(|(owners,)| DescribeDelegationTokenRequest { owners })
 }
 

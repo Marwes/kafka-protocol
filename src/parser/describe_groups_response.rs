@@ -6,24 +6,32 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (
                 be_i16(),
                 string(),
                 string(),
                 string(),
                 string(),
-                many((string(), string(), string(), bytes(), bytes()).map(
-                    |(member_id, client_id, client_host, member_metadata, member_assignment)| {
-                        Members {
+                array(|| {
+                    (string(), string(), string(), bytes(), bytes()).map(
+                        |(
                             member_id,
                             client_id,
                             client_host,
                             member_metadata,
                             member_assignment,
-                        }
-                    },
-                )),
+                        )| {
+                            Members {
+                                member_id,
+                                client_id,
+                                client_host,
+                                member_metadata,
+                                member_assignment,
+                            }
+                        },
+                    )
+                }),
                 be_i32(),
             )
                 .map(
@@ -46,8 +54,8 @@ where
                             authorized_operations,
                         }
                     },
-                ),
-        ),
+                )
+        }),
     )
         .map(|(throttle_time_ms, groups)| DescribeGroupsResponse {
             throttle_time_ms,

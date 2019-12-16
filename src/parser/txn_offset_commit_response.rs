@@ -6,18 +6,18 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (
                 string(),
-                many(
+                array(|| {
                     (be_i32(), be_i16()).map(|(partition, error_code)| Partitions {
                         partition,
                         error_code,
-                    }),
-                ),
+                    })
+                }),
             )
-                .map(|(topic, partitions)| Topics { topic, partitions }),
-        ),
+                .map(|(topic, partitions)| Topics { topic, partitions })
+        }),
     )
         .map(|(throttle_time_ms, topics)| TxnOffsetCommitResponse {
             throttle_time_ms,

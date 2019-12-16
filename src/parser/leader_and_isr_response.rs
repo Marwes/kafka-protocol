@@ -6,13 +6,13 @@ where
 {
     (
         be_i16(),
-        many(
+        array(|| {
             (string(), be_i32(), be_i16()).map(|(topic, partition, error_code)| Partitions {
                 topic,
                 partition,
                 error_code,
-            }),
-        ),
+            })
+        }),
     )
         .map(|(error_code, partitions)| LeaderAndIsrResponse {
             error_code,

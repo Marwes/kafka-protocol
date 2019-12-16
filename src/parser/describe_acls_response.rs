@@ -8,19 +8,21 @@ where
         be_i32(),
         be_i16(),
         nullable_string(),
-        many(
+        array(|| {
             (
                 be_i8(),
                 string(),
                 be_i8(),
-                many((string(), string(), be_i8(), be_i8()).map(
-                    |(principal, host, operation, permission_type)| Acls {
-                        principal,
-                        host,
-                        operation,
-                        permission_type,
-                    },
-                )),
+                array(|| {
+                    (string(), string(), be_i8(), be_i8()).map(
+                        |(principal, host, operation, permission_type)| Acls {
+                            principal,
+                            host,
+                            operation,
+                            permission_type,
+                        },
+                    )
+                }),
             )
                 .map(
                     |(resource_type, resource_name, resource_pattern_type, acls)| Resources {
@@ -29,8 +31,8 @@ where
                         resource_pattern_type,
                         acls,
                     },
-                ),
-        ),
+                )
+        }),
     )
         .map(
             |(throttle_time_ms, error_code, error_message, resources)| DescribeAclsResponse {

@@ -6,24 +6,28 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (
                 string(),
-                many((be_i32(), be_i16(), be_i64(), be_i64(), be_i32()).map(
-                    |(partition, error_code, timestamp, offset, leader_epoch)| PartitionResponses {
-                        partition,
-                        error_code,
-                        timestamp,
-                        offset,
-                        leader_epoch,
-                    },
-                )),
+                array(|| {
+                    (be_i32(), be_i16(), be_i64(), be_i64(), be_i32()).map(
+                        |(partition, error_code, timestamp, offset, leader_epoch)| {
+                            PartitionResponses {
+                                partition,
+                                error_code,
+                                timestamp,
+                                offset,
+                                leader_epoch,
+                            }
+                        },
+                    )
+                }),
             )
                 .map(|(topic, partition_responses)| Responses {
                     topic,
                     partition_responses,
-                }),
-        ),
+                })
+        }),
     )
         .map(|(throttle_time_ms, responses)| ListOffsetsResponse {
             throttle_time_ms,

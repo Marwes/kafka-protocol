@@ -5,16 +5,15 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        many(
+        array(|| {
             (
                 string(),
-                many(
-                    (be_i32(), be_i64())
-                        .map(|(partition, offset)| Partitions { partition, offset }),
-                ),
+                array(|| {
+                    (be_i32(), be_i64()).map(|(partition, offset)| Partitions { partition, offset })
+                }),
             )
-                .map(|(topic, partitions)| Topics { topic, partitions }),
-        ),
+                .map(|(topic, partitions)| Topics { topic, partitions })
+        }),
         be_i32(),
     )
         .map(|(topics, timeout)| DeleteRecordsRequest { topics, timeout })

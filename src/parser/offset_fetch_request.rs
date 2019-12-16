@@ -6,13 +6,13 @@ where
 {
     (
         string(),
-        many(
+        array(|| {
             (
                 string(),
-                many((be_i32(),).map(|(partition,)| Partitions { partition })),
+                array(|| (be_i32(),).map(|(partition,)| Partitions { partition })),
             )
-                .map(|(topic, partitions)| Topics { topic, partitions }),
-        ),
+                .map(|(topic, partitions)| Topics { topic, partitions })
+        }),
     )
         .map(|(group_id, topics)| OffsetFetchRequest { group_id, topics })
 }

@@ -8,18 +8,18 @@ where
         be_i32(),
         be_i32(),
         be_i64(),
-        many(
+        array(|| {
             (
                 string(),
-                many(
+                array(|| {
                     (
                         be_i32(),
                         be_i32(),
                         be_i32(),
                         be_i32(),
-                        many(be_i32()),
+                        array(|| be_i32()),
                         be_i32(),
-                        many(be_i32()),
+                        array(|| be_i32()),
                         any().map(|b| b != 0),
                     )
                         .map(
@@ -44,15 +44,17 @@ where
                                     is_new,
                                 }
                             },
-                        ),
-                ),
+                        )
+                }),
             )
                 .map(|(topic, partition_states)| TopicStates {
                     topic,
                     partition_states,
-                }),
-        ),
-        many((be_i32(), string(), be_i32()).map(|(id, host, port)| LiveLeaders { id, host, port })),
+                })
+        }),
+        array(|| {
+            (be_i32(), string(), be_i32()).map(|(id, host, port)| LiveLeaders { id, host, port })
+        }),
     )
         .map(
             |(controller_id, controller_epoch, broker_epoch, topic_states, live_leaders)| {

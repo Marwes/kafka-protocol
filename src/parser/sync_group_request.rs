@@ -9,12 +9,12 @@ where
         be_i32(),
         string(),
         nullable_string(),
-        many(
+        array(|| {
             (string(), bytes()).map(|(member_id, assignment)| Assignments {
                 member_id,
                 assignment,
-            }),
-        ),
+            })
+        }),
     )
         .map(
             |(group_id, generation_id, member_id, group_instance_id, assignments)| {

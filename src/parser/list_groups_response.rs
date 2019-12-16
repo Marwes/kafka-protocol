@@ -7,12 +7,12 @@ where
     (
         be_i32(),
         be_i16(),
-        many(
+        array(|| {
             (string(), string()).map(|(group_id, protocol_type)| Groups {
                 group_id,
                 protocol_type,
-            }),
-        ),
+            })
+        }),
     )
         .map(
             |(throttle_time_ms, error_code, groups)| ListGroupsResponse {

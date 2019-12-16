@@ -5,25 +5,23 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        many(
+        array(|| {
             (
                 be_i8(),
                 string(),
-                many(
-                    (string(), nullable_string()).map(|(config_name, config_value)| {
-                        ConfigEntries {
-                            config_name,
-                            config_value,
-                        }
-                    }),
-                ),
+                array(|| {
+                    (string(), nullable_string()).map(|(config_name, config_value)| ConfigEntries {
+                        config_name,
+                        config_value,
+                    })
+                }),
             )
                 .map(|(resource_type, resource_name, config_entries)| Resources {
                     resource_type,
                     resource_name,
                     config_entries,
-                }),
-        ),
+                })
+        }),
         any().map(|b| b != 0),
     )
         .map(|(resources, validate_only)| AlterConfigsRequest {

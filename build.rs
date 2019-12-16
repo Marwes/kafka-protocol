@@ -180,7 +180,7 @@ mod regenerate {
                                     .find(|rule| rule.name == i)
                                     .unwrap_or_else(|| panic!("Missing inner rule: {}", i));
                                 chain![arena;
-                                    "many(",
+                                    "array(||",
                                     inner.generate(i, arena),
                                     ",",
                                     "),",

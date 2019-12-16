@@ -6,12 +6,12 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (string(), be_i16()).map(|(group_id, error_code)| GroupErrorCodes {
                 group_id,
                 error_code,
-            }),
-        ),
+            })
+        }),
     )
         .map(
             |(throttle_time_ms, group_error_codes)| DeleteGroupsResponse {

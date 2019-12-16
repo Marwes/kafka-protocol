@@ -9,27 +9,29 @@ where
         be_i32(),
         string(),
         nullable_string(),
-        many(
+        array(|| {
             (
                 string(),
-                many((be_i32(), be_i64(), be_i32(), nullable_string()).map(
-                    |(
-                        partition_index,
-                        committed_offset,
-                        committed_leader_epoch,
-                        committed_metadata,
-                    )| {
-                        Partitions {
+                array(|| {
+                    (be_i32(), be_i64(), be_i32(), nullable_string()).map(
+                        |(
                             partition_index,
                             committed_offset,
                             committed_leader_epoch,
                             committed_metadata,
-                        }
-                    },
-                )),
+                        )| {
+                            Partitions {
+                                partition_index,
+                                committed_offset,
+                                committed_leader_epoch,
+                                committed_metadata,
+                            }
+                        },
+                    )
+                }),
             )
-                .map(|(name, partitions)| Topics { name, partitions }),
-        ),
+                .map(|(name, partitions)| Topics { name, partitions })
+        }),
     )
         .map(
             |(group_id, generation_id, member_id, group_instance_id, topics)| OffsetCommitRequest {

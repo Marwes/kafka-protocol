@@ -4,7 +4,7 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (many(string()), be_i32()).map(|(topic_names, timeout_ms)| DeleteTopicsRequest {
+    (array(|| string()), be_i32()).map(|(topic_names, timeout_ms)| DeleteTopicsRequest {
         topic_names,
         timeout_ms,
     })

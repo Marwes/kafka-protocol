@@ -6,12 +6,12 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        many(
-            (string(), many(be_i32())).map(|(topic, partition_id)| TopicPartitions {
+        array(|| {
+            (string(), array(|| be_i32())).map(|(topic, partition_id)| TopicPartitions {
                 topic,
                 partition_id,
-            }),
-        ),
+            })
+        }),
         be_i32(),
     )
         .map(

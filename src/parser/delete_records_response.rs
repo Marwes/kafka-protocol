@@ -6,19 +6,21 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (
                 string(),
-                many((be_i32(), be_i64(), be_i16()).map(
-                    |(partition, low_watermark, error_code)| Partitions {
-                        partition,
-                        low_watermark,
-                        error_code,
-                    },
-                )),
+                array(|| {
+                    (be_i32(), be_i64(), be_i16()).map(|(partition, low_watermark, error_code)| {
+                        Partitions {
+                            partition,
+                            low_watermark,
+                            error_code,
+                        }
+                    })
+                }),
             )
-                .map(|(topic, partitions)| Topics { topic, partitions }),
-        ),
+                .map(|(topic, partitions)| Topics { topic, partitions })
+        }),
     )
         .map(|(throttle_time_ms, topics)| DeleteRecordsResponse {
             throttle_time_ms,

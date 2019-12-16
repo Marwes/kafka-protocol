@@ -7,22 +7,24 @@ where
 {
     (
         be_i32(),
-        many(
+        array(|| {
             (
                 string(),
-                many((be_i32(), be_i16(), nullable_string()).map(
-                    |(partition_id, error_code, error_message)| PartitionResult {
-                        partition_id,
-                        error_code,
-                        error_message,
-                    },
-                )),
+                array(|| {
+                    (be_i32(), be_i16(), nullable_string()).map(
+                        |(partition_id, error_code, error_message)| PartitionResult {
+                            partition_id,
+                            error_code,
+                            error_message,
+                        },
+                    )
+                }),
             )
                 .map(|(topic, partition_result)| ReplicaElectionResults {
                     topic,
                     partition_result,
-                }),
-        ),
+                })
+        }),
     )
         .map(
             |(throttle_time_ms, replica_election_results)| ElectPreferredLeadersResponse {

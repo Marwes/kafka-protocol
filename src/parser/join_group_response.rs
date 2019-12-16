@@ -11,13 +11,15 @@ where
         string(),
         string(),
         string(),
-        many((string(), nullable_string(), bytes()).map(
-            |(member_id, group_instance_id, metadata)| Members {
-                member_id,
-                group_instance_id,
-                metadata,
-            },
-        )),
+        array(|| {
+            (string(), nullable_string(), bytes()).map(
+                |(member_id, group_instance_id, metadata)| Members {
+                    member_id,
+                    group_instance_id,
+                    metadata,
+                },
+            )
+        }),
     )
         .map(
             |(

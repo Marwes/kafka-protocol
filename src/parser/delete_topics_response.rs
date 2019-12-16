@@ -6,7 +6,7 @@ where
 {
     (
         be_i32(),
-        many((string(), be_i16()).map(|(name, error_code)| Responses { name, error_code })),
+        array(|| (string(), be_i16()).map(|(name, error_code)| Responses { name, error_code })),
     )
         .map(|(throttle_time_ms, responses)| DeleteTopicsResponse {
             throttle_time_ms,

@@ -5,13 +5,15 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        many((be_i8(), string(), many(string())).map(
-            |(resource_type, resource_name, config_names)| Resources {
-                resource_type,
-                resource_name,
-                config_names,
-            },
-        )),
+        array(|| {
+            (be_i8(), string(), array(|| string())).map(
+                |(resource_type, resource_name, config_names)| Resources {
+                    resource_type,
+                    resource_name,
+                    config_names,
+                },
+            )
+        }),
         any().map(|b| b != 0),
     )
         .map(|(resources, include_synonyms)| DescribeConfigsRequest {
