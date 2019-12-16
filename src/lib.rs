@@ -284,6 +284,19 @@ where
         .await
     }
 
+    pub async fn api_versions(
+        &mut self,
+        request: crate::parser::api_versions_request::ApiVersionsRequest,
+    ) -> io::Result<crate::parser::api_versions_response::ApiVersionsResponse> {
+        self.call(
+            request,
+            ApiKey::ApiVersions,
+            crate::parser::api_versions_request::VERSION,
+            crate::parser::api_versions_response::api_versions_response(),
+        )
+        .await
+    }
+
     async fn call<'i, R, P, O>(
         &'i mut self,
         request: R,
@@ -299,22 +312,30 @@ where
 
         self.buf.clear();
 
-        RequestHeader {
-            api_key: api_key as _,
-            api_version,
-            correlation_id: 0,
-            client_id: None,
-        }
-        .encode(&mut self.buf);
-        request.encode(&mut self.buf);
+        {
+            let header = RequestHeader {
+                api_key: api_key as _,
+                api_version,
+                correlation_id: 0,
+                client_id: None,
+            };
 
-        self.io.write_all(&self.buf).await?;
+            i32::try_from(header.encode_len() + request.encode_len())
+                .unwrap()
+                .encode(&mut self.buf);
+            header.encode(&mut self.buf);
+            request.encode(&mut self.buf);
+
+            self.io.write_all(&self.buf).await?;
+            eprintln!("Written");
+        }
 
         self.buf.clear();
 
         self.buf.reserve(mem::size_of::<i32>());
 
         while self.buf.len() < mem::size_of::<i32>() {
+            eprintln!("Read");
             if self.io.read_buf(&mut self.buf).await? == 0 {
                 return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
             }
@@ -322,17 +343,20 @@ where
 
         let response_len = (&self.buf[..mem::size_of::<i32>()]).get_i32();
         let response_len = usize::try_from(response_len).expect("Valid len");
+        eprintln!("Done read len {}", response_len);
 
-        self.buf.clear();
-        self.buf.reserve(response_len);
+        self.buf.reserve(self.buf.len() + response_len);
 
-        while self.buf.len() < response_len {
+        while self.buf.len() < response_len + mem::size_of::<i32>() {
+            eprintln!("Read response {}", self.buf.len());
             if self.io.read_buf(&mut self.buf).await? == 0 {
                 return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
             }
         }
 
-        let (response, _) = parser.parse(&self.buf[..]).expect("Valid response");
+        let (response, _) = parser
+            .parse(&self.buf[mem::size_of::<i32>()..])
+            .expect("Invalid response");
 
         Ok(response)
     }
@@ -347,6 +371,10 @@ mod tests {
     #[tokio::test]
     async fn it_works() {
         let mut client = Client::connect((IpAddr::from([127, 0, 0, 1]), 9092))
+            .await
+            .unwrap();
+        client
+            .api_versions(crate::parser::api_versions_request::ApiVersionsRequest {})
             .await
             .unwrap();
         client
