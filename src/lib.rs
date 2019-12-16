@@ -72,32 +72,6 @@ where
     })
 }
 
-pub struct Header<'a> {
-    /// The id of the request type.
-    pub api_key: ApiKey,
-    /// The version of the API.
-    pub api_version: i16,
-    /// A user-supplied integer value that will be passed back with the response
-    pub correlation_id: i32,
-    /// A user specified identifier for the client making the request.
-    pub client_id: &'a [u8],
-}
-
-pub fn header<'i, I>() -> impl Parser<I, Output = Header<'i>>
-where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
-    I::Error: ParseError<I::Token, I::Range, I::Position>,
-{
-    combine::struct_parser! {
-        Header {
-            api_key: be_i16().and_then(|i| ApiKey::try_from(i).map_err(StreamErrorFor::<I>::message_static_message)),
-            api_version: be_i16(),
-            correlation_id: be_i32(),
-            client_id: range::take_while(|b| b != b'0')
-        }
-    }
-}
-
 pub trait Encode {
     fn encode_len(&self) -> usize;
     fn encode(&self, writer: &mut impl bytes::BufMut);
@@ -294,20 +268,33 @@ where
         &mut self,
         request: ProduceRequest<'_>,
     ) -> io::Result<ProduceResponse<'_>> {
-        self.call(request, produce_response()).await
+        self.call(request, ApiKey::Produce, produce_response())
+            .await
     }
 
     pub async fn fetch(&mut self, request: FetchRequest<'_>) -> io::Result<FetchResponse<'_>> {
-        self.call(request, fetch_response()).await
+        self.call(request, ApiKey::Fetch, fetch_response()).await
     }
 
-    async fn call<'i, R, P, O>(&'i mut self, request: R, mut parser: P) -> io::Result<O>
+    async fn call<'i, R, P, O>(
+        &'i mut self,
+        request: R,
+        api_key: ApiKey,
+        mut parser: P,
+    ) -> io::Result<O>
     where
         R: Encode,
         P: Parser<&'i [u8], Output = O>,
     {
+        use crate::parser::request_header::RequestHeader;
+
         self.buf.clear();
 
+        // RequestHeader {
+        //     api_key: api_key as _,
+        //     api_version,
+        // }
+        // .encode(&mut self.buf);
         request.encode(&mut self.buf);
 
         self.io.write_all(&self.buf).await?;
@@ -317,7 +304,9 @@ where
         self.buf.reserve(mem::size_of::<i32>());
 
         while self.buf.len() < mem::size_of::<i32>() {
-            self.io.read_buf(&mut self.buf).await?;
+            if self.io.read_buf(&mut self.buf).await? == 0 {
+                return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
+            }
         }
 
         let response_len = (&self.buf[..mem::size_of::<i32>()]).get_i32();
@@ -327,7 +316,9 @@ where
         self.buf.reserve(response_len);
 
         while self.buf.len() < response_len {
-            self.io.read_buf(&mut self.buf).await?;
+            if self.io.read_buf(&mut self.buf).await? == 0 {
+                return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
+            }
         }
 
         let (response, _) = parser.parse(&self.buf[..]).expect("Valid response");
@@ -338,8 +329,23 @@ where
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    use super::*;
+
+    use std::net::IpAddr;
+
+    #[tokio::test]
+    async fn it_works() {
+        let mut client = Client::connect((IpAddr::from([127, 0, 0, 1]), 9092))
+            .await
+            .unwrap();
+        client
+            .produce(ProduceRequest {
+                acks: 1,
+                timeout: 1000,
+                transactional_id: None,
+                topic_data: vec![],
+            })
+            .await
+            .unwrap();
     }
 }
