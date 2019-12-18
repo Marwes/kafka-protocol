@@ -4,19 +4,27 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (be_i16(), be_i16(), be_i32(), nullable_string()).map(
-        |(api_key, api_version, correlation_id, client_id)| RequestHeader {
-            api_key,
-            api_version,
-            correlation_id,
-            client_id,
-        },
+    (
+        be_i16().and_then(|i| {
+            ApiKey::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+        }),
+        be_i16(),
+        be_i32(),
+        nullable_string(),
     )
+        .map(
+            |(api_key, api_version, correlation_id, client_id)| RequestHeader {
+                api_key,
+                api_version,
+                correlation_id,
+                client_id,
+            },
+        )
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RequestHeader<'i> {
-    pub api_key: i16,
+    pub api_key: ApiKey,
     pub api_version: i16,
     pub correlation_id: i32,
     pub client_id: Option<&'i str>,

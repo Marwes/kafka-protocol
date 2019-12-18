@@ -1,5 +1,5 @@
 use std::convert::TryFrom;
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum ApiKey {
     Produce = 0,
     Fetch = 1,

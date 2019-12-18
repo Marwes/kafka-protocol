@@ -53,6 +53,7 @@ mod regenerate {
     fn write_parser<'i>(field: &str, i: &'i str, arena: Arena<'i>) -> Option<DocBuilder<'i>> {
         match field {
             "error_code" => return Some(arena.text("be_i16().and_then(|i| ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))")),
+            "api_key" => return Some(arena.text("be_i16().and_then(|i| ApiKey::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))")),
             _ => (),
         }
         Some(match i {
@@ -78,6 +79,7 @@ mod regenerate {
     fn write_ty<'i>(field: &str, ty: &'i str) -> Option<std::borrow::Cow<'i, str>> {
         match field {
             "error_code" => return Some("ErrorCode".into()),
+            "api_key" => return Some("ApiKey".into()),
             _ => (),
         }
         Some(match ty {
@@ -611,7 +613,7 @@ mod regenerate {
             };
 
             writeln!(out, "use std::convert::TryFrom;")?;
-            writeln!(out, "#[derive(Eq, PartialEq, Debug)]")?;
+            writeln!(out, "#[derive(Clone, Copy, Eq, PartialEq, Debug)]")?;
             writeln!(out, "pub enum ApiKey {{")?;
             for (name, number) in iter() {
                 writeln!(out, "    {name} = {number},", name = name, number = number)?;

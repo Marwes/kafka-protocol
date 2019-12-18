@@ -206,6 +206,16 @@ impl Encode for ErrorCode {
     }
 }
 
+impl Encode for ApiKey {
+    fn encode_len(&self) -> usize {
+        mem::size_of::<i16>()
+    }
+
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        (*self as i16).encode(writer);
+    }
+}
+
 pub struct MessageSet<'i> {
     offset: i64,
     message_size: i32,
@@ -420,7 +430,7 @@ where
 
         {
             let header = RequestHeader {
-                api_key: api_key as _,
+                api_key,
                 api_version,
                 correlation_id: self.correlation_id,
                 client_id: None,

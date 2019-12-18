@@ -9,11 +9,18 @@ where
             ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
         }),
         array(|| {
-            (be_i16(), be_i16(), be_i16()).map(|(api_key, min_version, max_version)| ApiVersions {
-                api_key,
-                min_version,
-                max_version,
-            })
+            (
+                be_i16().and_then(|i| {
+                    ApiKey::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+                }),
+                be_i16(),
+                be_i16(),
+            )
+                .map(|(api_key, min_version, max_version)| ApiVersions {
+                    api_key,
+                    min_version,
+                    max_version,
+                })
         }),
         be_i32(),
     )
@@ -50,7 +57,7 @@ pub const VERSION: i16 = 2;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ApiVersions {
-    pub api_key: i16,
+    pub api_key: ApiKey,
     pub min_version: i16,
     pub max_version: i16,
 }
