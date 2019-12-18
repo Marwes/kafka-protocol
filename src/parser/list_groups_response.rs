@@ -1,12 +1,14 @@
 use super::*;
-pub fn list_groups_response<'i, I>() -> impl Parser<I, Output = ListGroupsResponse<'i>>
+pub fn list_groups_response<'i, I>() -> impl Parser<I, Output = ListGroupsResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
         be_i32(),
-        be_i16(),
+        be_i16().and_then(|i| {
+            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+        }),
         array(|| {
             (string(), string()).map(|(group_id, protocol_type)| Groups {
                 group_id,
@@ -26,7 +28,7 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct ListGroupsResponse<'i> {
     pub throttle_time_ms: i32,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub groups: Vec<Groups<'i>>,
 }
 

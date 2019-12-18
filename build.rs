@@ -50,7 +50,11 @@ mod regenerate {
         }
     }
 
-    fn write_parser<'i>(i: &'i str, arena: Arena<'i>) -> Option<DocBuilder<'i>> {
+    fn write_parser<'i>(field: &str, i: &'i str, arena: Arena<'i>) -> Option<DocBuilder<'i>> {
+        match field {
+            "error_code" => return Some(arena.text("be_i16().and_then(|i| ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))")),
+            _ => (),
+        }
         Some(match i {
             _ if i.starts_with("INT") => arena.text(format!(
                 "be_i{}()",
@@ -71,21 +75,25 @@ mod regenerate {
         })
     }
 
-    fn write_ty<'i>(i: &'i str) -> Option<std::borrow::Cow<'i, str>> {
-        Some(match i {
-            _ if i.starts_with("INT") => {
-                format!("i{}", i.trim_start_matches(char::is_alphabetic)).into()
+    fn write_ty<'i>(field: &str, ty: &'i str) -> Option<std::borrow::Cow<'i, str>> {
+        match field {
+            "error_code" => return Some("ErrorCode".into()),
+            _ => (),
+        }
+        Some(match ty {
+            _ if ty.starts_with("INT") => {
+                format!("i{}", ty.trim_start_matches(char::is_alphabetic)).into()
             }
-            _ if i.starts_with("UINT") => {
-                format!("u{}", i.trim_start_matches(char::is_alphabetic)).into()
+            _ if ty.starts_with("UINT") => {
+                format!("u{}", ty.trim_start_matches(char::is_alphabetic)).into()
             }
             "BYTES" => "&'i [u8]".into(),
             "NULLABLE_BYTES" => "Option<&'i [u8]>".into(),
             "STRING" => "&'i str".into(),
             "NULLABLE_STRING" => "Option<&'i str>".into(),
             "BOOLEAN" => "bool".into(),
-            _ if i.starts_with("ARRAY") => format!("&'i [u8]").into(), // TODO
-            "RECORDS" => "Option<&'i [u8]>".into(),                    // TODO
+            _ if ty.starts_with("ARRAY") => format!("&'i [u8]").into(), // TODO
+            "RECORDS" => "Option<&'i [u8]>".into(),                     // TODO
             _ => return None,
         })
     }
@@ -96,7 +104,7 @@ mod regenerate {
             name,
             ":",
             arena.line(),
-            write_ty(i).unwrap_or_else(|| format!("{}", i).into()),
+            write_ty(name, i).unwrap_or_else(|| format!("{}", i).into()),
             ",",
         ]
         .group()
@@ -116,12 +124,12 @@ mod regenerate {
                 "<'i, I>() -> impl Parser<I, Output = ",
                 &name,
                 self.lifetime(),
-                ">",
+                "> + 'i",
                 arena.line_(),
                 "where",
                 chain![&arena;
                     arena.line_(),
-                    "I: RangeStream<Token = u8, Range = &'i [u8]>,",
+                    "I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,",
                     arena.line_(),
                     "I::Error: ParseError<I::Token, I::Range, I::Position>,",
                 ].nest(4),
@@ -151,7 +159,7 @@ mod regenerate {
             if let Some(doc) = self
                 .production
                 .first()
-                .and_then(|prod| write_parser(prod.name(), arena))
+                .and_then(|prod| write_parser(name, prod.name(), arena))
             {
                 return doc;
             }
@@ -193,8 +201,8 @@ mod regenerate {
                                         .find(|rule| rule.name == i)
                                     {
                                         Some(inner_rule) =>
-                                            write_parser(inner_rule.production.first().unwrap().name(), arena).unwrap_or_else(|| inner_rule.generate(i, arena)),
-                                        None => write_parser(i, arena).unwrap_or_else(|| panic!("write_parser: {} {:#?}", i, self.inner)),
+                                            write_parser(i, inner_rule.production.first().unwrap().name(), arena).unwrap_or_else(|| inner_rule.generate(i, arena)),
+                                        None => write_parser(i, i, arena).unwrap_or_else(|| panic!("write_parser: {} {:#?}", i, self.inner)),
                                     },
                                     ","
                                 ]
@@ -222,7 +230,7 @@ mod regenerate {
         fn needs_lifetime(&self) -> bool {
             self.production
                 .iter()
-                .any(|e| write_ty(e.name()).map_or(false, |n| n.contains("'i")))
+                .any(|e| write_ty("", e.name()).map_or(false, |n| n.contains("'i")))
                 || self.inner.iter().any(|rule| rule.needs_lifetime())
         }
         fn lifetime(&self) -> &'static str {
@@ -329,7 +337,7 @@ mod regenerate {
                             if let Some(ty) = inner
                                 .production
                                 .first()
-                                .and_then(|prod| write_ty(prod.name()))
+                                .and_then(|prod| write_ty(i, prod.name()))
                             {
                                 return chain![arena;
                                     "pub ",
@@ -365,7 +373,7 @@ mod regenerate {
                                     if let Some(ty) = inner_rule
                                         .production
                                         .first()
-                                        .and_then(|prod| write_ty(prod.name()))
+                                        .and_then(|prod| write_ty(i, prod.name()))
                                     {
                                         return chain![arena;
                                             "pub ",
@@ -550,27 +558,42 @@ mod regenerate {
             let kafka_errors = fs::read_to_string("kafka_errors.txt")?;
             let mut out = io::BufWriter::new(fs::File::create("src/error.rs")?);
 
-            writeln!(out, "#[derive(Eq, PartialEq, Debug)]")?;
+            writeln!(out, "use std::convert::TryFrom;")?;
+
+            writeln!(out, "#[derive(Clone, Copy, Eq, PartialEq, Debug)]")?;
             writeln!(out, "pub enum ErrorCode {{")?;
-            let iter = kafka_errors.lines().map(|line| {
-                let mut s = line.split('\t');
-                let name = s.next().expect("name");
-                let number = s.next().expect("number");
-                let _retriable = s.next().expect("retriable");
-                let doc = s.next();
-                (name, number, doc)
-            });
-            for (name, number, doc) in iter {
+            let iter = || {
+                kafka_errors.lines().map(|line| {
+                    let mut s = line.split('\t');
+                    let name = s.next().expect("name");
+                    let name = inflector::cases::pascalcase::to_pascal_case(name);
+                    let number = s.next().expect("number");
+                    let _retriable = s.next().expect("retriable");
+                    let doc = s.next();
+                    (name, number, doc)
+                })
+            };
+            for (name, number, doc) in iter() {
                 if let Some(doc) = doc {
                     writeln!(out, "    /// {}", doc)?;
                 }
-                writeln!(
-                    out,
-                    "    {name} = {number},",
-                    name = inflector::cases::pascalcase::to_pascal_case(name),
-                    number = number
-                )?;
+                writeln!(out, "    {name} = {number},", name = name, number = number)?;
             }
+            writeln!(out, "}}")?;
+
+            writeln!(out, "impl TryFrom<i16> for ErrorCode {{")?;
+            writeln!(out, "    type Error = &'static str;")?;
+            writeln!(
+                out,
+                "    fn try_from(i: i16) -> Result<Self, Self::Error> {{"
+            )?;
+            writeln!(out, "        Ok(match i {{")?;
+            for (name, number, _doc) in iter() {
+                writeln!(out, "            {} => ErrorCode::{},", number, name)?;
+            }
+            writeln!(out, r#"            _ => return Err("Invalid ErrorCode")"#)?;
+            writeln!(out, "        }})")?;
+            writeln!(out, "    }}")?;
             writeln!(out, "}}")?;
         }
         {

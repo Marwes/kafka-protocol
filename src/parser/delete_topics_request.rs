@@ -1,7 +1,7 @@
 use super::*;
-pub fn delete_topics_request<'i, I>() -> impl Parser<I, Output = DeleteTopicsRequest<'i>>
+pub fn delete_topics_request<'i, I>() -> impl Parser<I, Output = DeleteTopicsRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (array(|| string()), be_i32()).map(|(topic_names, timeout_ms)| DeleteTopicsRequest {

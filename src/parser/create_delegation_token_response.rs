@@ -1,12 +1,14 @@
 use super::*;
 pub fn create_delegation_token_response<'i, I>(
-) -> impl Parser<I, Output = CreateDelegationTokenResponse<'i>>
+) -> impl Parser<I, Output = CreateDelegationTokenResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i16(),
+        be_i16().and_then(|i| {
+            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+        }),
         (string(), string()).map(|(principal_type, name)| Owner {
             principal_type,
             name,
@@ -45,7 +47,7 @@ where
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreateDelegationTokenResponse<'i> {
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub owner: Owner<'i>,
     pub issue_timestamp: i64,
     pub expiry_timestamp: i64,

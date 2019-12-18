@@ -1,7 +1,7 @@
 use super::*;
-pub fn describe_groups_request<'i, I>() -> impl Parser<I, Output = DescribeGroupsRequest<'i>>
+pub fn describe_groups_request<'i, I>() -> impl Parser<I, Output = DescribeGroupsRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (array(|| string()), any().map(|b| b != 0)).map(|(groups, include_authorized_operations)| {

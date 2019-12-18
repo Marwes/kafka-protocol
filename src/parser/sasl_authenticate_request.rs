@@ -1,7 +1,8 @@
 use super::*;
-pub fn sasl_authenticate_request<'i, I>() -> impl Parser<I, Output = SaslAuthenticateRequest<'i>>
+pub fn sasl_authenticate_request<'i, I>(
+) -> impl Parser<I, Output = SaslAuthenticateRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (bytes(),).map(|(auth_bytes,)| SaslAuthenticateRequest { auth_bytes })

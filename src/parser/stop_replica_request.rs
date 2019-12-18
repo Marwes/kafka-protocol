@@ -1,7 +1,7 @@
 use super::*;
-pub fn stop_replica_request<'i, I>() -> impl Parser<I, Output = StopReplicaRequest<'i>>
+pub fn stop_replica_request<'i, I>() -> impl Parser<I, Output = StopReplicaRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (

@@ -1,12 +1,14 @@
 use super::*;
-pub fn describe_acls_response<'i, I>() -> impl Parser<I, Output = DescribeAclsResponse<'i>>
+pub fn describe_acls_response<'i, I>() -> impl Parser<I, Output = DescribeAclsResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
         be_i32(),
-        be_i16(),
+        be_i16().and_then(|i| {
+            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+        }),
         nullable_string(),
         array(|| {
             (
@@ -47,7 +49,7 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct DescribeAclsResponse<'i> {
     pub throttle_time_ms: i32,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub error_message: Option<&'i str>,
     pub resources: Vec<Resources<'i>>,
 }

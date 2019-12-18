@@ -1,8 +1,8 @@
 use super::*;
 pub fn alter_replica_log_dirs_request<'i, I>(
-) -> impl Parser<I, Output = AlterReplicaLogDirsRequest<'i>>
+) -> impl Parser<I, Output = AlterReplicaLogDirsRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (array(|| {

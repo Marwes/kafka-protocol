@@ -1,7 +1,7 @@
 use super::*;
-pub fn produce_request<'i, I>() -> impl Parser<I, Output = ProduceRequest<'i>>
+pub fn produce_request<'i, I>() -> impl Parser<I, Output = ProduceRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (

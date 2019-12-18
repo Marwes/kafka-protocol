@@ -1,7 +1,7 @@
 use super::*;
-pub fn heartbeat_request<'i, I>() -> impl Parser<I, Output = HeartbeatRequest<'i>>
+pub fn heartbeat_request<'i, I>() -> impl Parser<I, Output = HeartbeatRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (string(), be_i32(), string(), nullable_string()).map(

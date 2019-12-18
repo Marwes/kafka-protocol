@@ -1,7 +1,7 @@
 use super::*;
-pub fn offset_fetch_response<'i, I>() -> impl Parser<I, Output = OffsetFetchResponse<'i>>
+pub fn offset_fetch_response<'i, I>() -> impl Parser<I, Output = OffsetFetchResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
@@ -10,17 +10,27 @@ where
             (
                 string(),
                 array(|| {
-                    (be_i32(), be_i64(), be_i32(), nullable_string(), be_i16()).map(
-                        |(partition, offset, leader_epoch, metadata, error_code)| {
-                            PartitionResponses {
-                                partition,
-                                offset,
-                                leader_epoch,
-                                metadata,
-                                error_code,
-                            }
-                        },
+                    (
+                        be_i32(),
+                        be_i64(),
+                        be_i32(),
+                        nullable_string(),
+                        be_i16().and_then(|i| {
+                            ErrorCode::try_from(i)
+                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                        }),
                     )
+                        .map(
+                            |(partition, offset, leader_epoch, metadata, error_code)| {
+                                PartitionResponses {
+                                    partition,
+                                    offset,
+                                    leader_epoch,
+                                    metadata,
+                                    error_code,
+                                }
+                            },
+                        )
                 }),
             )
                 .map(|(topic, partition_responses)| Responses {
@@ -28,7 +38,9 @@ where
                     partition_responses,
                 })
         }),
-        be_i16(),
+        be_i16().and_then(|i| {
+            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+        }),
     )
         .map(
             |(throttle_time_ms, responses, error_code)| OffsetFetchResponse {
@@ -43,7 +55,7 @@ where
 pub struct OffsetFetchResponse<'i> {
     pub throttle_time_ms: i32,
     pub responses: Vec<Responses<'i>>,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
 }
 
 impl<'i> crate::Encode for OffsetFetchResponse<'i> {
@@ -67,7 +79,7 @@ pub struct PartitionResponses<'i> {
     pub offset: i64,
     pub leader_epoch: i32,
     pub metadata: Option<&'i str>,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
 }
 
 impl<'i> crate::Encode for PartitionResponses<'i> {

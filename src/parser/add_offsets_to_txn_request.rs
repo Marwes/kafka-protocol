@@ -1,7 +1,8 @@
 use super::*;
-pub fn add_offsets_to_txn_request<'i, I>() -> impl Parser<I, Output = AddOffsetsToTxnRequest<'i>>
+pub fn add_offsets_to_txn_request<'i, I>(
+) -> impl Parser<I, Output = AddOffsetsToTxnRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (string(), be_i64(), be_i16(), string()).map(

@@ -1,7 +1,7 @@
 use super::*;
-pub fn request_header<'i, I>() -> impl Parser<I, Output = RequestHeader<'i>>
+pub fn request_header<'i, I>() -> impl Parser<I, Output = RequestHeader<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (be_i16(), be_i16(), be_i32(), nullable_string()).map(

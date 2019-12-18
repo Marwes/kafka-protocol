@@ -1,12 +1,14 @@
 use super::*;
 pub fn controlled_shutdown_response<'i, I>(
-) -> impl Parser<I, Output = ControlledShutdownResponse<'i>>
+) -> impl Parser<I, Output = ControlledShutdownResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i16(),
+        be_i16().and_then(|i| {
+            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+        }),
         array(|| {
             (string(), be_i32()).map(|(topic_name, partition_index)| RemainingPartitions {
                 topic_name,
@@ -24,7 +26,7 @@ where
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ControlledShutdownResponse<'i> {
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub remaining_partitions: Vec<RemainingPartitions<'i>>,
 }
 

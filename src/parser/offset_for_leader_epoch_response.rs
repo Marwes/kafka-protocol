@@ -1,8 +1,8 @@
 use super::*;
 pub fn offset_for_leader_epoch_response<'i, I>(
-) -> impl Parser<I, Output = OffsetForLeaderEpochResponse<'i>>
+) -> impl Parser<I, Output = OffsetForLeaderEpochResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
@@ -11,14 +11,23 @@ where
             (
                 string(),
                 array(|| {
-                    (be_i16(), be_i32(), be_i32(), be_i64()).map(
-                        |(error_code, partition, leader_epoch, end_offset)| Partitions {
-                            error_code,
-                            partition,
-                            leader_epoch,
-                            end_offset,
-                        },
+                    (
+                        be_i16().and_then(|i| {
+                            ErrorCode::try_from(i)
+                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                        }),
+                        be_i32(),
+                        be_i32(),
+                        be_i64(),
                     )
+                        .map(
+                            |(error_code, partition, leader_epoch, end_offset)| Partitions {
+                                error_code,
+                                partition,
+                                leader_epoch,
+                                end_offset,
+                            },
+                        )
                 }),
             )
                 .map(|(topic, partitions)| Topics { topic, partitions })
@@ -50,7 +59,7 @@ pub const VERSION: i16 = 3;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions {
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub partition: i32,
     pub leader_epoch: i32,
     pub end_offset: i64,

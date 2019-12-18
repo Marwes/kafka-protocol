@@ -1,7 +1,7 @@
 use super::*;
-pub fn list_offsets_response<'i, I>() -> impl Parser<I, Output = ListOffsetsResponse<'i>>
+pub fn list_offsets_response<'i, I>() -> impl Parser<I, Output = ListOffsetsResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
@@ -10,17 +10,27 @@ where
             (
                 string(),
                 array(|| {
-                    (be_i32(), be_i16(), be_i64(), be_i64(), be_i32()).map(
-                        |(partition, error_code, timestamp, offset, leader_epoch)| {
-                            PartitionResponses {
-                                partition,
-                                error_code,
-                                timestamp,
-                                offset,
-                                leader_epoch,
-                            }
-                        },
+                    (
+                        be_i32(),
+                        be_i16().and_then(|i| {
+                            ErrorCode::try_from(i)
+                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                        }),
+                        be_i64(),
+                        be_i64(),
+                        be_i32(),
                     )
+                        .map(
+                            |(partition, error_code, timestamp, offset, leader_epoch)| {
+                                PartitionResponses {
+                                    partition,
+                                    error_code,
+                                    timestamp,
+                                    offset,
+                                    leader_epoch,
+                                }
+                            },
+                        )
                 }),
             )
                 .map(|(topic, partition_responses)| Responses {
@@ -56,7 +66,7 @@ pub const VERSION: i16 = 5;
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartitionResponses {
     pub partition: i32,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub timestamp: i64,
     pub offset: i64,
     pub leader_epoch: i32,

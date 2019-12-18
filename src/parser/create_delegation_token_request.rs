@@ -1,8 +1,8 @@
 use super::*;
 pub fn create_delegation_token_request<'i, I>(
-) -> impl Parser<I, Output = CreateDelegationTokenRequest<'i>>
+) -> impl Parser<I, Output = CreateDelegationTokenRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (

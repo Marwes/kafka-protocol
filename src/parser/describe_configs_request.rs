@@ -1,7 +1,7 @@
 use super::*;
-pub fn describe_configs_request<'i, I>() -> impl Parser<I, Output = DescribeConfigsRequest<'i>>
+pub fn describe_configs_request<'i, I>() -> impl Parser<I, Output = DescribeConfigsRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (

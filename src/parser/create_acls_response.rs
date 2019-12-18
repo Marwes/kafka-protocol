@@ -1,16 +1,22 @@
 use super::*;
-pub fn create_acls_response<'i, I>() -> impl Parser<I, Output = CreateAclsResponse<'i>>
+pub fn create_acls_response<'i, I>() -> impl Parser<I, Output = CreateAclsResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
         be_i32(),
         array(|| {
-            (be_i16(), nullable_string()).map(|(error_code, error_message)| CreationResponses {
-                error_code,
-                error_message,
-            })
+            (
+                be_i16().and_then(|i| {
+                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+                }),
+                nullable_string(),
+            )
+                .map(|(error_code, error_message)| CreationResponses {
+                    error_code,
+                    error_message,
+                })
         }),
     )
         .map(
@@ -41,7 +47,7 @@ pub const VERSION: i16 = 1;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreationResponses<'i> {
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub error_message: Option<&'i str>,
 }
 

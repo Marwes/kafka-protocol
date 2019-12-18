@@ -1,11 +1,13 @@
 use super::*;
-pub fn api_versions_response<'i, I>() -> impl Parser<I, Output = ApiVersionsResponse>
+pub fn api_versions_response<'i, I>() -> impl Parser<I, Output = ApiVersionsResponse> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i16(),
+        be_i16().and_then(|i| {
+            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+        }),
         array(|| {
             (be_i16(), be_i16(), be_i16()).map(|(api_key, min_version, max_version)| ApiVersions {
                 api_key,
@@ -26,7 +28,7 @@ where
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ApiVersionsResponse {
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub api_versions: Vec<ApiVersions>,
     pub throttle_time_ms: i32,
 }

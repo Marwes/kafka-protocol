@@ -1,7 +1,7 @@
 use super::*;
-pub fn txn_offset_commit_request<'i, I>() -> impl Parser<I, Output = TxnOffsetCommitRequest<'i>>
+pub fn txn_offset_commit_request<'i, I>() -> impl Parser<I, Output = TxnOffsetCommitRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (

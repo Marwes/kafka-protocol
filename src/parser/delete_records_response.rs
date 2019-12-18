@@ -1,7 +1,7 @@
 use super::*;
-pub fn delete_records_response<'i, I>() -> impl Parser<I, Output = DeleteRecordsResponse<'i>>
+pub fn delete_records_response<'i, I>() -> impl Parser<I, Output = DeleteRecordsResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
@@ -10,13 +10,21 @@ where
             (
                 string(),
                 array(|| {
-                    (be_i32(), be_i64(), be_i16()).map(|(partition, low_watermark, error_code)| {
-                        Partitions {
-                            partition,
-                            low_watermark,
-                            error_code,
-                        }
-                    })
+                    (
+                        be_i32(),
+                        be_i64(),
+                        be_i16().and_then(|i| {
+                            ErrorCode::try_from(i)
+                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                        }),
+                    )
+                        .map(|(partition, low_watermark, error_code)| {
+                            Partitions {
+                                partition,
+                                low_watermark,
+                                error_code,
+                            }
+                        })
                 }),
             )
                 .map(|(topic, partitions)| Topics { topic, partitions })
@@ -50,7 +58,7 @@ pub const VERSION: i16 = 1;
 pub struct Partitions {
     pub partition: i32,
     pub low_watermark: i64,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
 }
 
 impl crate::Encode for Partitions {

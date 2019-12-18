@@ -1,8 +1,8 @@
 use super::*;
 pub fn expire_delegation_token_request<'i, I>(
-) -> impl Parser<I, Output = ExpireDelegationTokenRequest<'i>>
+) -> impl Parser<I, Output = ExpireDelegationTokenRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (bytes(), be_i64()).map(|(hmac, expiry_time_period)| ExpireDelegationTokenRequest {

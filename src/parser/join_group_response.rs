@@ -1,12 +1,14 @@
 use super::*;
-pub fn join_group_response<'i, I>() -> impl Parser<I, Output = JoinGroupResponse<'i>>
+pub fn join_group_response<'i, I>() -> impl Parser<I, Output = JoinGroupResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
         be_i32(),
-        be_i16(),
+        be_i16().and_then(|i| {
+            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+        }),
         be_i32(),
         string(),
         string(),
@@ -47,7 +49,7 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct JoinGroupResponse<'i> {
     pub throttle_time_ms: i32,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub generation_id: i32,
     pub protocol_name: &'i str,
     pub leader: &'i str,

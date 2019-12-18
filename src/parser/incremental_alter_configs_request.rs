@@ -1,8 +1,8 @@
 use super::*;
 pub fn incremental_alter_configs_request<'i, I>(
-) -> impl Parser<I, Output = IncrementalAlterConfigsRequest<'i>>
+) -> impl Parser<I, Output = IncrementalAlterConfigsRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (

@@ -1,8 +1,8 @@
 use super::*;
 pub fn add_partitions_to_txn_response<'i, I>(
-) -> impl Parser<I, Output = AddPartitionsToTxnResponse<'i>>
+) -> impl Parser<I, Output = AddPartitionsToTxnResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
@@ -11,10 +11,17 @@ where
             (
                 string(),
                 array(|| {
-                    (be_i32(), be_i16()).map(|(partition, error_code)| PartitionErrors {
-                        partition,
-                        error_code,
-                    })
+                    (
+                        be_i32(),
+                        be_i16().and_then(|i| {
+                            ErrorCode::try_from(i)
+                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                        }),
+                    )
+                        .map(|(partition, error_code)| PartitionErrors {
+                            partition,
+                            error_code,
+                        })
                 }),
             )
                 .map(|(topic, partition_errors)| Errors {
@@ -50,7 +57,7 @@ pub const VERSION: i16 = 1;
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartitionErrors {
     pub partition: i32,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
 }
 
 impl crate::Encode for PartitionErrors {

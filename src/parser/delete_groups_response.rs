@@ -1,16 +1,22 @@
 use super::*;
-pub fn delete_groups_response<'i, I>() -> impl Parser<I, Output = DeleteGroupsResponse<'i>>
+pub fn delete_groups_response<'i, I>() -> impl Parser<I, Output = DeleteGroupsResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
         be_i32(),
         array(|| {
-            (string(), be_i16()).map(|(group_id, error_code)| GroupErrorCodes {
-                group_id,
-                error_code,
-            })
+            (
+                string(),
+                be_i16().and_then(|i| {
+                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+                }),
+            )
+                .map(|(group_id, error_code)| GroupErrorCodes {
+                    group_id,
+                    error_code,
+                })
         }),
     )
         .map(
@@ -42,7 +48,7 @@ pub const VERSION: i16 = 1;
 #[derive(Clone, Debug, PartialEq)]
 pub struct GroupErrorCodes<'i> {
     pub group_id: &'i str,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
 }
 
 impl<'i> crate::Encode for GroupErrorCodes<'i> {

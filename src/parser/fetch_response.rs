@@ -1,12 +1,14 @@
 use super::*;
-pub fn fetch_response<'i, I>() -> impl Parser<I, Output = FetchResponse<'i>>
+pub fn fetch_response<'i, I>() -> impl Parser<I, Output = FetchResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
         be_i32(),
-        be_i16(),
+        be_i16().and_then(|i| {
+            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+        }),
         be_i32(),
         array(|| {
             (
@@ -15,7 +17,10 @@ where
                     (
                         (
                             be_i32(),
-                            be_i16(),
+                            be_i16().and_then(|i| {
+                                ErrorCode::try_from(i)
+                                    .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                            }),
                             be_i64(),
                             be_i64(),
                             be_i64(),
@@ -79,7 +84,7 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct FetchResponse<'i> {
     pub throttle_time_ms: i32,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub session_id: i32,
     pub responses: Vec<Responses<'i>>,
 }
@@ -120,7 +125,7 @@ impl crate::Encode for AbortedTransactions {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartitionHeader {
     pub partition: i32,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub high_watermark: i64,
     pub last_stable_offset: i64,
     pub log_start_offset: i64,

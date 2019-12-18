@@ -1,14 +1,17 @@
 use super::*;
-pub fn describe_log_dirs_response<'i, I>() -> impl Parser<I, Output = DescribeLogDirsResponse<'i>>
+pub fn describe_log_dirs_response<'i, I>(
+) -> impl Parser<I, Output = DescribeLogDirsResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
         be_i32(),
         array(|| {
             (
-                be_i16(),
+                be_i16().and_then(|i| {
+                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+                }),
                 string(),
                 array(|| {
                     (
@@ -99,7 +102,7 @@ impl<'i> crate::Encode for Topics<'i> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LogDirs<'i> {
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub log_dir: &'i str,
     pub topics: Vec<Topics<'i>>,
 }

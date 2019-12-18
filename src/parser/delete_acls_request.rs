@@ -1,7 +1,7 @@
 use super::*;
-pub fn delete_acls_request<'i, I>() -> impl Parser<I, Output = DeleteAclsRequest<'i>>
+pub fn delete_acls_request<'i, I>() -> impl Parser<I, Output = DeleteAclsRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (array(|| {

@@ -1,12 +1,20 @@
 use super::*;
-pub fn delete_topics_response<'i, I>() -> impl Parser<I, Output = DeleteTopicsResponse<'i>>
+pub fn delete_topics_response<'i, I>() -> impl Parser<I, Output = DeleteTopicsResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
         be_i32(),
-        array(|| (string(), be_i16()).map(|(name, error_code)| Responses { name, error_code })),
+        array(|| {
+            (
+                string(),
+                be_i16().and_then(|i| {
+                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+                }),
+            )
+                .map(|(name, error_code)| Responses { name, error_code })
+        }),
     )
         .map(|(throttle_time_ms, responses)| DeleteTopicsResponse {
             throttle_time_ms,
@@ -35,7 +43,7 @@ pub const VERSION: i16 = 3;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Responses<'i> {
     pub name: &'i str,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
 }
 
 impl<'i> crate::Encode for Responses<'i> {

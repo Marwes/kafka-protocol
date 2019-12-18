@@ -1,7 +1,8 @@
 use super::*;
-pub fn create_partitions_request<'i, I>() -> impl Parser<I, Output = CreatePartitionsRequest<'i>>
+pub fn create_partitions_request<'i, I>(
+) -> impl Parser<I, Output = CreatePartitionsRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (

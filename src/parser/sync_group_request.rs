@@ -1,7 +1,7 @@
 use super::*;
-pub fn sync_group_request<'i, I>() -> impl Parser<I, Output = SyncGroupRequest<'i>>
+pub fn sync_group_request<'i, I>() -> impl Parser<I, Output = SyncGroupRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (

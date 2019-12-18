@@ -1,7 +1,7 @@
 use super::*;
-pub fn sasl_handshake_request<'i, I>() -> impl Parser<I, Output = SaslHandshakeRequest<'i>>
+pub fn sasl_handshake_request<'i, I>() -> impl Parser<I, Output = SaslHandshakeRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (string(),).map(|(mechanism,)| SaslHandshakeRequest { mechanism })

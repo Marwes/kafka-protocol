@@ -1,7 +1,7 @@
 use super::*;
-pub fn init_producer_id_request<'i, I>() -> impl Parser<I, Output = InitProducerIdRequest<'i>>
+pub fn init_producer_id_request<'i, I>() -> impl Parser<I, Output = InitProducerIdRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (nullable_string(), be_i32()).map(|(transactional_id, transaction_timeout_ms)| {

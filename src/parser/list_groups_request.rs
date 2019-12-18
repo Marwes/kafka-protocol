@@ -1,7 +1,7 @@
 use super::*;
-pub fn list_groups_request<'i, I>() -> impl Parser<I, Output = ListGroupsRequest>
+pub fn list_groups_request<'i, I>() -> impl Parser<I, Output = ListGroupsRequest> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     value(ListGroupsRequest {})

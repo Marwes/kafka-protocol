@@ -1,22 +1,29 @@
 use super::*;
-pub fn sync_group_response<'i, I>() -> impl Parser<I, Output = SyncGroupResponse<'i>>
+pub fn sync_group_response<'i, I>() -> impl Parser<I, Output = SyncGroupResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (be_i32(), be_i16(), bytes()).map(|(throttle_time_ms, error_code, assignment)| {
-        SyncGroupResponse {
-            throttle_time_ms,
-            error_code,
-            assignment,
-        }
-    })
+    (
+        be_i32(),
+        be_i16().and_then(|i| {
+            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+        }),
+        bytes(),
+    )
+        .map(
+            |(throttle_time_ms, error_code, assignment)| SyncGroupResponse {
+                throttle_time_ms,
+                error_code,
+                assignment,
+            },
+        )
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SyncGroupResponse<'i> {
     pub throttle_time_ms: i32,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub assignment: &'i [u8],
 }
 

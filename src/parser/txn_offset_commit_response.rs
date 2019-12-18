@@ -1,7 +1,8 @@
 use super::*;
-pub fn txn_offset_commit_response<'i, I>() -> impl Parser<I, Output = TxnOffsetCommitResponse<'i>>
+pub fn txn_offset_commit_response<'i, I>(
+) -> impl Parser<I, Output = TxnOffsetCommitResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
@@ -10,10 +11,17 @@ where
             (
                 string(),
                 array(|| {
-                    (be_i32(), be_i16()).map(|(partition, error_code)| Partitions {
-                        partition,
-                        error_code,
-                    })
+                    (
+                        be_i32(),
+                        be_i16().and_then(|i| {
+                            ErrorCode::try_from(i)
+                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                        }),
+                    )
+                        .map(|(partition, error_code)| Partitions {
+                            partition,
+                            error_code,
+                        })
                 }),
             )
                 .map(|(topic, partitions)| Topics { topic, partitions })
@@ -46,7 +54,7 @@ pub const VERSION: i16 = 2;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions {
     pub partition: i32,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
 }
 
 impl crate::Encode for Partitions {

@@ -1,14 +1,17 @@
 use super::*;
-pub fn describe_configs_response<'i, I>() -> impl Parser<I, Output = DescribeConfigsResponse<'i>>
+pub fn describe_configs_response<'i, I>(
+) -> impl Parser<I, Output = DescribeConfigsResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
         be_i32(),
         array(|| {
             (
-                be_i16(),
+                be_i16().and_then(|i| {
+                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+                }),
                 nullable_string(),
                 be_i8(),
                 string(),
@@ -138,7 +141,7 @@ impl<'i> crate::Encode for ConfigEntries<'i> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Resources<'i> {
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub error_message: Option<&'i str>,
     pub resource_type: i8,
     pub resource_name: &'i str,

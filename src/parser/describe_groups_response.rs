@@ -1,14 +1,16 @@
 use super::*;
-pub fn describe_groups_response<'i, I>() -> impl Parser<I, Output = DescribeGroupsResponse<'i>>
+pub fn describe_groups_response<'i, I>() -> impl Parser<I, Output = DescribeGroupsResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
         be_i32(),
         array(|| {
             (
-                be_i16(),
+                be_i16().and_then(|i| {
+                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+                }),
                 string(),
                 string(),
                 string(),
@@ -109,7 +111,7 @@ impl<'i> crate::Encode for Members<'i> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Groups<'i> {
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub group_id: &'i str,
     pub group_state: &'i str,
     pub protocol_type: &'i str,

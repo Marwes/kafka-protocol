@@ -12,7 +12,7 @@ use combine::{
 };
 use integer_encoding::VarInt;
 
-use api_key::ApiKey;
+use {api_key::ApiKey, error::ErrorCode};
 
 pub mod api_key;
 pub mod error;
@@ -193,6 +193,16 @@ impl Encode for bool {
 
     fn encode(&self, writer: &mut impl bytes::BufMut) {
         writer.put_u8(*self as u8);
+    }
+}
+
+impl Encode for ErrorCode {
+    fn encode_len(&self) -> usize {
+        mem::size_of::<i16>()
+    }
+
+    fn encode(&self, writer: &mut impl bytes::BufMut) {
+        (*self as i16).encode(writer);
     }
 }
 
@@ -525,6 +535,11 @@ mod tests {
             })
             .await
             .unwrap();
-        eprintln!("{:#?}", produce_response);
+        assert_eq!(produce_response.responses.len(), 1);
+        assert_eq!(produce_response.responses[0].topic, "test");
+        assert_eq!(
+            produce_response.responses[0].partition_responses[0].error_code,
+            ErrorCode::None,
+        );
     }
 }

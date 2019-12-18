@@ -1,8 +1,8 @@
 use super::*;
 pub fn offset_for_leader_epoch_request<'i, I>(
-) -> impl Parser<I, Output = OffsetForLeaderEpochRequest<'i>>
+) -> impl Parser<I, Output = OffsetForLeaderEpochRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (

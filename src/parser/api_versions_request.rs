@@ -1,7 +1,7 @@
 use super::*;
-pub fn api_versions_request<'i, I>() -> impl Parser<I, Output = ApiVersionsRequest>
+pub fn api_versions_request<'i, I>() -> impl Parser<I, Output = ApiVersionsRequest> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     value(ApiVersionsRequest {})

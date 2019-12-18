@@ -1,7 +1,7 @@
 use super::*;
-pub fn metadata_response<'i, I>() -> impl Parser<I, Output = MetadataResponse<'i>>
+pub fn metadata_response<'i, I>() -> impl Parser<I, Output = MetadataResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
@@ -20,12 +20,17 @@ where
         be_i32(),
         array(|| {
             (
-                be_i16(),
+                be_i16().and_then(|i| {
+                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+                }),
                 string(),
                 any().map(|b| b != 0),
                 array(|| {
                     (
-                        be_i16(),
+                        be_i16().and_then(|i| {
+                            ErrorCode::try_from(i)
+                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                        }),
                         be_i32(),
                         be_i32(),
                         be_i32(),
@@ -148,7 +153,7 @@ impl<'i> crate::Encode for Brokers<'i> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions {
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub partition_index: i32,
     pub leader_id: i32,
     pub leader_epoch: i32,
@@ -180,7 +185,7 @@ impl crate::Encode for Partitions {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Topics<'i> {
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub name: &'i str,
     pub is_internal: bool,
     pub partitions: Vec<Partitions>,

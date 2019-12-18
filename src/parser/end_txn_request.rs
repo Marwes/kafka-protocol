@@ -1,7 +1,7 @@
 use super::*;
-pub fn end_txn_request<'i, I>() -> impl Parser<I, Output = EndTxnRequest<'i>>
+pub fn end_txn_request<'i, I>() -> impl Parser<I, Output = EndTxnRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (string(), be_i64(), be_i16(), any().map(|b| b != 0)).map(

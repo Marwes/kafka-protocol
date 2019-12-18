@@ -1,8 +1,8 @@
 use super::*;
 pub fn add_partitions_to_txn_request<'i, I>(
-) -> impl Parser<I, Output = AddPartitionsToTxnRequest<'i>>
+) -> impl Parser<I, Output = AddPartitionsToTxnRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (

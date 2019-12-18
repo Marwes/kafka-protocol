@@ -1,7 +1,7 @@
 use super::*;
-pub fn offset_fetch_request<'i, I>() -> impl Parser<I, Output = OffsetFetchRequest<'i>>
+pub fn offset_fetch_request<'i, I>() -> impl Parser<I, Output = OffsetFetchRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (

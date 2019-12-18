@@ -1,7 +1,7 @@
 use super::*;
-pub fn offset_commit_response<'i, I>() -> impl Parser<I, Output = OffsetCommitResponse<'i>>
+pub fn offset_commit_response<'i, I>() -> impl Parser<I, Output = OffsetCommitResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
@@ -10,10 +10,17 @@ where
             (
                 string(),
                 array(|| {
-                    (be_i32(), be_i16()).map(|(partition_index, error_code)| Partitions {
-                        partition_index,
-                        error_code,
-                    })
+                    (
+                        be_i32(),
+                        be_i16().and_then(|i| {
+                            ErrorCode::try_from(i)
+                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                        }),
+                    )
+                        .map(|(partition_index, error_code)| Partitions {
+                            partition_index,
+                            error_code,
+                        })
                 }),
             )
                 .map(|(name, partitions)| Topics { name, partitions })
@@ -46,7 +53,7 @@ pub const VERSION: i16 = 7;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions {
     pub partition_index: i32,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
 }
 
 impl crate::Encode for Partitions {

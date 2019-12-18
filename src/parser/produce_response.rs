@@ -1,7 +1,7 @@
 use super::*;
-pub fn produce_response<'i, I>() -> impl Parser<I, Output = ProduceResponse<'i>>
+pub fn produce_response<'i, I>() -> impl Parser<I, Output = ProduceResponse<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
@@ -9,23 +9,33 @@ where
             (
                 string(),
                 array(|| {
-                    (be_i32(), be_i16(), be_i64(), be_i64(), be_i64()).map(
-                        |(
-                            partition,
-                            error_code,
-                            base_offset,
-                            log_append_time,
-                            log_start_offset,
-                        )| {
-                            PartitionResponses {
+                    (
+                        be_i32(),
+                        be_i16().and_then(|i| {
+                            ErrorCode::try_from(i)
+                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                        }),
+                        be_i64(),
+                        be_i64(),
+                        be_i64(),
+                    )
+                        .map(
+                            |(
                                 partition,
                                 error_code,
                                 base_offset,
                                 log_append_time,
                                 log_start_offset,
-                            }
-                        },
-                    )
+                            )| {
+                                PartitionResponses {
+                                    partition,
+                                    error_code,
+                                    base_offset,
+                                    log_append_time,
+                                    log_start_offset,
+                                }
+                            },
+                        )
                 }),
             )
                 .map(|(topic, partition_responses)| Responses {
@@ -62,7 +72,7 @@ pub const VERSION: i16 = 7;
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartitionResponses {
     pub partition: i32,
-    pub error_code: i16,
+    pub error_code: ErrorCode,
     pub base_offset: i64,
     pub log_append_time: i64,
     pub log_start_offset: i64,

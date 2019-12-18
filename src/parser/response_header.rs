@@ -1,7 +1,7 @@
 use super::*;
-pub fn response_header<'i, I>() -> impl Parser<I, Output = ResponseHeader>
+pub fn response_header<'i, I>() -> impl Parser<I, Output = ResponseHeader> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (be_i32(),).map(|(correlation_id,)| ResponseHeader { correlation_id })

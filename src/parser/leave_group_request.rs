@@ -1,7 +1,7 @@
 use super::*;
-pub fn leave_group_request<'i, I>() -> impl Parser<I, Output = LeaveGroupRequest<'i>>
+pub fn leave_group_request<'i, I>() -> impl Parser<I, Output = LeaveGroupRequest<'i>> + 'i
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (string(), string()).map(|(group_id, member_id)| LeaveGroupRequest {
