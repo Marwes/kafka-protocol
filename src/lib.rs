@@ -413,6 +413,19 @@ where
         .await
     }
 
+    pub async fn create_partitions(
+        &mut self,
+        request: crate::parser::CreatePartitionsRequest<'_>,
+    ) -> io::Result<crate::parser::CreatePartitionsResponse<'_>> {
+        self.call(
+            request,
+            ApiKey::CreatePartitions,
+            crate::parser::create_partitions_request::VERSION,
+            crate::parser::create_partitions_response(),
+        )
+        .await
+    }
+
     async fn call<'i, R, P, O>(
         &'i mut self,
         request: R,

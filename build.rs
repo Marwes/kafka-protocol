@@ -535,8 +535,8 @@ mod regenerate {
             .into_iter()
             .map(|iter| iter.1.last().unwrap())
         {
-            let name = rule.name.replace(" ", "");
-            let name = inflector::cases::snakecase::to_snake_case(&name);
+            let type_name = rule.name.replace(" ", "");
+            let name = inflector::cases::snakecase::to_snake_case(&type_name);
             let mut out = io::BufWriter::new(
                 fs::File::create(format!("src/parser/{}.rs", name))
                     .map_err(|err| format!("Unable to create module {}: {}", name, err))?,
@@ -547,6 +547,12 @@ mod regenerate {
             write!(out, "{}", str::from_utf8(&s).unwrap())?;
 
             writeln!(parser_out, "pub mod {};", name)?;
+            writeln!(
+                parser_out,
+                "pub use self::{name}::{{{type_name}, {name}}};",
+                name = name,
+                type_name = type_name
+            )?;
         }
         Ok(())
     }
