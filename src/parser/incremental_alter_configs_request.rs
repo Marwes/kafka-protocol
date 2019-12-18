@@ -46,7 +46,7 @@ impl<'i> crate::Encode for IncrementalAlterConfigsRequest<'i> {
     fn encode_len(&self) -> usize {
         self.resources.encode_len() + self.validate_only.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.resources.encode(writer);
         self.validate_only.encode(writer);
     }
@@ -65,7 +65,7 @@ impl<'i> crate::Encode for Configs<'i> {
     fn encode_len(&self) -> usize {
         self.name.encode_len() + self.config_operation.encode_len() + self.value.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.name.encode(writer);
         self.config_operation.encode(writer);
         self.value.encode(writer);
@@ -85,7 +85,7 @@ impl<'i> crate::Encode for Resources<'i> {
             + self.resource_name.encode_len()
             + self.configs.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.resource_type.encode(writer);
         self.resource_name.encode(writer);
         self.configs.encode(writer);

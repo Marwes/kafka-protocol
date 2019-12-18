@@ -21,7 +21,7 @@ impl crate::Encode for ControlledShutdownRequest {
     fn encode_len(&self) -> usize {
         self.broker_id.encode_len() + self.broker_epoch.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.broker_id.encode(writer);
         self.broker_epoch.encode(writer);
     }

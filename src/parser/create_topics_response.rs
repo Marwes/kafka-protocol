@@ -37,7 +37,7 @@ impl<'i> crate::Encode for CreateTopicsResponse<'i> {
     fn encode_len(&self) -> usize {
         self.throttle_time_ms.encode_len() + self.topics.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.topics.encode(writer);
     }
@@ -56,7 +56,7 @@ impl<'i> crate::Encode for Topics<'i> {
     fn encode_len(&self) -> usize {
         self.name.encode_len() + self.error_code.encode_len() + self.error_message.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.name.encode(writer);
         self.error_code.encode(writer);
         self.error_message.encode(writer);

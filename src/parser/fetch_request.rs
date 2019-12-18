@@ -99,7 +99,7 @@ impl<'i> crate::Encode for FetchRequest<'i> {
             + self.forgotten_topics_data.encode_len()
             + self.rack_id.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.replica_id.encode(writer);
         self.max_wait_time.encode(writer);
         self.min_bytes.encode(writer);
@@ -132,7 +132,7 @@ impl crate::Encode for Partitions {
             + self.log_start_offset.encode_len()
             + self.partition_max_bytes.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.current_leader_epoch.encode(writer);
         self.fetch_offset.encode(writer);
@@ -151,7 +151,7 @@ impl<'i> crate::Encode for Topics<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partitions.encode(writer);
     }
@@ -167,7 +167,7 @@ impl<'i> crate::Encode for ForgottenTopicsData<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partitions.encode(writer);
     }

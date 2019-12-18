@@ -96,7 +96,7 @@ impl<'i> crate::Encode for FetchResponse<'i> {
             + self.session_id.encode_len()
             + self.responses.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.error_code.encode(writer);
         self.session_id.encode(writer);
@@ -116,7 +116,7 @@ impl crate::Encode for AbortedTransactions {
     fn encode_len(&self) -> usize {
         self.producer_id.encode_len() + self.first_offset.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.producer_id.encode(writer);
         self.first_offset.encode(writer);
     }
@@ -143,7 +143,7 @@ impl crate::Encode for PartitionHeader {
             + self.aborted_transactions.encode_len()
             + self.preferred_read_replica.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.error_code.encode(writer);
         self.high_watermark.encode(writer);
@@ -164,7 +164,7 @@ impl<'i> crate::Encode for PartitionResponses<'i> {
     fn encode_len(&self) -> usize {
         self.partition_header.encode_len() + self.record_set.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition_header.encode(writer);
         self.record_set.encode(writer);
     }
@@ -180,7 +180,7 @@ impl<'i> crate::Encode for Responses<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partition_responses.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partition_responses.encode(writer);
     }

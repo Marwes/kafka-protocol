@@ -41,7 +41,7 @@ impl<'i> crate::Encode for AlterConfigsResponse<'i> {
     fn encode_len(&self) -> usize {
         self.throttle_time_ms.encode_len() + self.resources.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.resources.encode(writer);
     }
@@ -64,7 +64,7 @@ impl<'i> crate::Encode for Resources<'i> {
             + self.resource_type.encode_len()
             + self.resource_name.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.error_message.encode(writer);
         self.resource_type.encode(writer);

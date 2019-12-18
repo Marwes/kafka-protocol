@@ -16,7 +16,7 @@ impl crate::Encode for ResponseHeader {
     fn encode_len(&self) -> usize {
         self.correlation_id.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.correlation_id.encode(writer);
     }
 }

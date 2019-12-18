@@ -27,7 +27,7 @@ impl<'i> crate::Encode for OffsetFetchRequest<'i> {
     fn encode_len(&self) -> usize {
         self.group_id.encode_len() + self.topics.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.group_id.encode(writer);
         self.topics.encode(writer);
     }
@@ -44,7 +44,7 @@ impl crate::Encode for Partitions {
     fn encode_len(&self) -> usize {
         self.partition.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
     }
 }
@@ -59,7 +59,7 @@ impl<'i> crate::Encode for Topics<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partitions.encode(writer);
     }

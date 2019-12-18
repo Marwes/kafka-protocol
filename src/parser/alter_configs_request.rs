@@ -40,7 +40,7 @@ impl<'i> crate::Encode for AlterConfigsRequest<'i> {
     fn encode_len(&self) -> usize {
         self.resources.encode_len() + self.validate_only.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.resources.encode(writer);
         self.validate_only.encode(writer);
     }
@@ -58,7 +58,7 @@ impl<'i> crate::Encode for ConfigEntries<'i> {
     fn encode_len(&self) -> usize {
         self.config_name.encode_len() + self.config_value.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.config_name.encode(writer);
         self.config_value.encode(writer);
     }
@@ -77,7 +77,7 @@ impl<'i> crate::Encode for Resources<'i> {
             + self.resource_name.encode_len()
             + self.config_entries.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.resource_type.encode(writer);
         self.resource_name.encode(writer);
         self.config_entries.encode(writer);

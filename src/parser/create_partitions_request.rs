@@ -42,7 +42,7 @@ impl<'i> crate::Encode for CreatePartitionsRequest<'i> {
             + self.timeout.encode_len()
             + self.validate_only.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic_partitions.encode(writer);
         self.timeout.encode(writer);
         self.validate_only.encode(writer);
@@ -61,7 +61,7 @@ impl<'i> crate::Encode for NewPartitions<'i> {
     fn encode_len(&self) -> usize {
         self.count.encode_len() + self.assignment.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.count.encode(writer);
         self.assignment.encode(writer);
     }
@@ -77,7 +77,7 @@ impl<'i> crate::Encode for TopicPartitions<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.new_partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.new_partitions.encode(writer);
     }

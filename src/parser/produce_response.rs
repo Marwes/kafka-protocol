@@ -61,7 +61,7 @@ impl<'i> crate::Encode for ProduceResponse<'i> {
     fn encode_len(&self) -> usize {
         self.responses.encode_len() + self.throttle_time_ms.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.responses.encode(writer);
         self.throttle_time_ms.encode(writer);
     }
@@ -86,7 +86,7 @@ impl crate::Encode for PartitionResponses {
             + self.log_append_time.encode_len()
             + self.log_start_offset.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.error_code.encode(writer);
         self.base_offset.encode(writer);
@@ -105,7 +105,7 @@ impl<'i> crate::Encode for Responses<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partition_responses.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partition_responses.encode(writer);
     }

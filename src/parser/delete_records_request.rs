@@ -29,7 +29,7 @@ impl<'i> crate::Encode for DeleteRecordsRequest<'i> {
     fn encode_len(&self) -> usize {
         self.topics.encode_len() + self.timeout.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topics.encode(writer);
         self.timeout.encode(writer);
     }
@@ -47,7 +47,7 @@ impl crate::Encode for Partitions {
     fn encode_len(&self) -> usize {
         self.partition.encode_len() + self.offset.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.offset.encode(writer);
     }
@@ -63,7 +63,7 @@ impl<'i> crate::Encode for Topics<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partitions.encode(writer);
     }

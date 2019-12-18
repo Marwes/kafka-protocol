@@ -61,7 +61,7 @@ impl<'i> crate::Encode for DescribeAclsResponse<'i> {
             + self.error_message.encode_len()
             + self.resources.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.error_code.encode(writer);
         self.error_message.encode(writer);
@@ -86,7 +86,7 @@ impl<'i> crate::Encode for Acls<'i> {
             + self.operation.encode_len()
             + self.permission_type.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.principal.encode(writer);
         self.host.encode(writer);
         self.operation.encode(writer);
@@ -109,7 +109,7 @@ impl<'i> crate::Encode for Resources<'i> {
             + self.resource_pattern_type.encode_len()
             + self.acls.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.resource_type.encode(writer);
         self.resource_name.encode(writer);
         self.resource_pattern_type.encode(writer);

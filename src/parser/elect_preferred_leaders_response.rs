@@ -52,7 +52,7 @@ impl<'i> crate::Encode for ElectPreferredLeadersResponse<'i> {
     fn encode_len(&self) -> usize {
         self.throttle_time_ms.encode_len() + self.replica_election_results.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.replica_election_results.encode(writer);
     }
@@ -73,7 +73,7 @@ impl<'i> crate::Encode for PartitionResult<'i> {
             + self.error_code.encode_len()
             + self.error_message.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition_id.encode(writer);
         self.error_code.encode(writer);
         self.error_message.encode(writer);
@@ -90,7 +90,7 @@ impl<'i> crate::Encode for ReplicaElectionResults<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partition_result.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partition_result.encode(writer);
     }

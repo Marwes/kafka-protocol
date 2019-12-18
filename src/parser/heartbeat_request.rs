@@ -29,7 +29,7 @@ impl<'i> crate::Encode for HeartbeatRequest<'i> {
             + self.member_id.encode_len()
             + self.group_instance_id.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.group_id.encode(writer);
         self.generation_id.encode(writer);
         self.member_id.encode(writer);

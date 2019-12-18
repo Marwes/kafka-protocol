@@ -87,9 +87,13 @@ where
     })
 }
 
+pub trait Buffer: bytes::BufMut + std::ops::DerefMut<Target = [u8]> {}
+
+impl<T> Buffer for T where T: bytes::BufMut + std::ops::DerefMut<Target = [u8]> {}
+
 pub trait Encode {
     fn encode_len(&self) -> usize;
-    fn encode(&self, writer: &mut impl bytes::BufMut);
+    fn encode(&self, writer: &mut impl Buffer);
 }
 
 macro_rules! encode_impl {
@@ -99,7 +103,7 @@ macro_rules! encode_impl {
                 mem::size_of::<Self>()
             }
 
-            fn encode(&self, writer: &mut impl bytes::BufMut) {
+            fn encode(&self, writer: &mut impl Buffer) {
                 writer.$method(*self);
             }
         }
@@ -121,7 +125,7 @@ where
         mem::size_of::<i32>() + self.iter().map(|elem| elem.encode_len()).sum::<usize>()
     }
 
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         let l = i32::try_from(self.len()).unwrap();
         l.encode(writer);
         for elem in self {
@@ -138,7 +142,7 @@ impl Encode for Option<&'_ [u8]> {
         }
     }
 
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         match self {
             Some(t) => t.encode(writer),
             None => (-1i32).encode(writer),
@@ -154,7 +158,7 @@ impl Encode for Option<&'_ str> {
         }
     }
 
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         match self {
             Some(t) => t.encode(writer),
             None => (-1i16).encode(writer),
@@ -167,7 +171,7 @@ impl Encode for &'_ [u8] {
         mem::size_of::<i32>() + self.len()
     }
 
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         let l = i32::try_from(self.len()).unwrap();
         l.encode(writer);
         writer.put(*self);
@@ -179,7 +183,7 @@ impl Encode for &'_ str {
         mem::size_of::<i16>() + self.len()
     }
 
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         let l = i16::try_from(self.len()).unwrap();
         l.encode(writer);
         writer.put(self.as_bytes());
@@ -191,7 +195,7 @@ impl Encode for bool {
         1
     }
 
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         writer.put_u8(*self as u8);
     }
 }
@@ -201,7 +205,7 @@ impl Encode for ErrorCode {
         mem::size_of::<i16>()
     }
 
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         (*self as i16).encode(writer);
     }
 }
@@ -211,20 +215,22 @@ impl Encode for ApiKey {
         mem::size_of::<i16>()
     }
 
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         (*self as i16).encode(writer);
     }
 }
 
 pub struct MessageSet<'i> {
     offset: i64,
-    message_size: i32,
+    // Computed
+    // message_size: i32,
     message: Message<'i>,
 }
 
 pub struct Message<'i> {
-    crc: i32,
-    magic_byte: i8,
+    // Computed
+    // crc: i32,
+    magic_byte: i8, // Version
     // bit 0~2:
     //     0: no compression
     //     1: gzip
@@ -235,40 +241,50 @@ pub struct Message<'i> {
     //     1: log append time
     // bit 4~7: unused
     attributes: i8,
-    timestamp: i64,
+    // timestamp: i64,
     key: &'i [u8],
     value: &'i [u8],
 }
 
 impl Encode for MessageSet<'_> {
     fn encode_len(&self) -> usize {
-        self.offset.encode_len() + self.message_size.encode_len() + self.message.encode_len()
+        self.offset.encode_len() + mem::size_of::<i32>() + self.message.encode_len()
     }
 
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.offset.encode(writer);
-        self.message_size.encode(writer);
+        let message_size_start = writer.len();
+        0i32.encode(writer); // Reserve space for message_size
         self.message.encode(writer);
+
+        let message_size_end = message_size_start + mem::size_of::<i32>();
+        let message_size = i32::try_from(writer.len() - message_size_end).unwrap();
+        writer[message_size_start..message_size_end].copy_from_slice(&message_size.to_be_bytes());
     }
 }
 
 impl Encode for Message<'_> {
     fn encode_len(&self) -> usize {
-        self.crc.encode_len()
+        mem::size_of::<i32>()
             + self.magic_byte.encode_len()
             + self.attributes.encode_len()
-            + self.timestamp.encode_len()
+            // + self.timestamp.encode_len()
             + self.key.encode_len()
             + self.value.encode_len()
     }
 
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
-        self.crc.encode(writer);
+    fn encode(&self, writer: &mut impl Buffer) {
+        let crc_start = writer.len();
+        0i32.encode(writer); // Reserve space for crc
         self.magic_byte.encode(writer);
         self.attributes.encode(writer);
-        self.timestamp.encode(writer);
+        // self.timestamp.encode(writer);
         self.key.encode(writer);
         self.value.encode(writer);
+
+        let crc_end = crc_start + mem::size_of::<i32>();
+        let crc = crc::crc32::checksum_ieee(&writer[crc_end..]);
+        writer[crc_start..crc_end].copy_from_slice(&crc.to_be_bytes());
     }
 }
 
@@ -290,13 +306,13 @@ pub struct RecordHeader<'i> {
 fn encode_var_bytes_space(input: &[u8]) -> usize {
     i32::try_from(input.len()).unwrap().required_space() + input.len()
 }
-fn encode_var_bytes(input: &[u8], writer: &mut impl bytes::BufMut) {
+fn encode_var_bytes(input: &[u8], writer: &mut impl Buffer) {
     let len = i32::try_from(input.len()).unwrap();
     encode_var_i32(len, writer);
     writer.put(input);
 }
 
-fn encode_var_i32(input: i32, writer: &mut impl bytes::BufMut) {
+fn encode_var_i32(input: i32, writer: &mut impl Buffer) {
     let mut buf = [0; 5];
     let i = integer_encoding::VarInt::encode_var(input, &mut buf);
     writer.put(&buf[..i]);
@@ -316,7 +332,7 @@ impl Encode for Record<'_> {
             + self.headers.iter().map(|h| h.encode_len()).sum::<usize>()
     }
 
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         encode_var_i32(self.length, writer);
         writer.put_i8(self.attributes);
         encode_var_i32(self.timestamp_delta, writer);
@@ -337,7 +353,7 @@ impl Encode for RecordHeader<'_> {
         encode_var_bytes_space(self.key.as_bytes()) + encode_var_bytes_space(self.value)
     }
 
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         encode_var_bytes(self.key.as_bytes(), writer);
         encode_var_bytes(self.value, writer);
     }
@@ -348,13 +364,6 @@ use std::io;
 use {
     bytes::Buf,
     tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
-};
-
-use crate::parser::{
-    fetch_request::FetchRequest,
-    fetch_response::{fetch_response, FetchResponse},
-    produce_request::ProduceRequest,
-    produce_response::{produce_response, ProduceResponse},
 };
 
 pub struct Client<I> {
@@ -377,55 +386,6 @@ impl<I> Client<I>
 where
     I: AsyncRead + AsyncWrite + std::marker::Unpin,
 {
-    pub async fn produce(
-        &mut self,
-        request: ProduceRequest<'_>,
-    ) -> io::Result<ProduceResponse<'_>> {
-        self.call(
-            request,
-            ApiKey::Produce,
-            crate::parser::produce_request::VERSION,
-            produce_response(),
-        )
-        .await
-    }
-
-    pub async fn fetch(&mut self, request: FetchRequest<'_>) -> io::Result<FetchResponse<'_>> {
-        self.call(
-            request,
-            ApiKey::Fetch,
-            crate::parser::fetch_request::VERSION,
-            fetch_response(),
-        )
-        .await
-    }
-
-    pub async fn api_versions(
-        &mut self,
-        request: crate::parser::api_versions_request::ApiVersionsRequest,
-    ) -> io::Result<crate::parser::api_versions_response::ApiVersionsResponse> {
-        self.call(
-            request,
-            ApiKey::ApiVersions,
-            crate::parser::api_versions_request::VERSION,
-            crate::parser::api_versions_response::api_versions_response(),
-        )
-        .await
-    }
-
-    pub async fn create_partitions(
-        &mut self,
-        request: crate::parser::CreatePartitionsRequest<'_>,
-    ) -> io::Result<crate::parser::CreatePartitionsResponse<'_>> {
-        self.call(
-            request,
-            ApiKey::CreatePartitions,
-            crate::parser::create_partitions_request::VERSION,
-            crate::parser::create_partitions_response(),
-        )
-        .await
-    }
-
     async fn call<'i, R, P, O>(
         &'i mut self,
         request: R,
@@ -503,11 +463,15 @@ mod tests {
 
     use std::net::IpAddr;
 
+    fn port() -> u16 {
+        32768
+    }
+
     #[tokio::test]
     async fn api_versions() {
         let _ = env_logger::try_init();
 
-        let mut client = Client::connect((IpAddr::from([127, 0, 0, 1]), 9092))
+        let mut client = Client::connect((IpAddr::from([127, 0, 0, 1]), port()))
             .await
             .unwrap();
         let api_versions_response = client
@@ -521,26 +485,47 @@ mod tests {
     async fn produce() {
         let _ = env_logger::try_init();
 
-        use crate::parser::produce_request::{Data, TopicData};
-        let mut client = Client::connect((IpAddr::from([127, 0, 0, 1]), 9092))
+        use crate::parser::{
+            produce_request::{Data, TopicData},
+            CreateTopicsRequest, ProduceRequest,
+        };
+        let mut client = Client::connect((IpAddr::from([127, 0, 0, 1]), port()))
             .await
             .unwrap();
+
+        let create_topics_response = client
+            .create_topics(CreateTopicsRequest {
+                timeout_ms: 1000,
+                topics: vec![crate::parser::create_topics_request::Topics {
+                    assignments: vec![],
+                    configs: vec![],
+                    name: "test",
+                    num_partitions: 1,
+                    replication_factor: 1,
+                }],
+                validate_only: false,
+            })
+            .await
+            .unwrap();
+        assert!(
+            create_topics_response.topics == vec![]
+                || (create_topics_response.topics.len() == 1
+                    && create_topics_response.topics[0].error_code
+                        == ErrorCode::TopicAlreadyExists),
+            "{:#?}",
+            create_topics_response
+        );
 
         let mut record_set = Vec::new();
         {
             let message = Message {
-                attributes: 0,
                 magic_byte: 0,
-                crc: 0,
-                timestamp: 0,
+                attributes: 0,
+                // timestamp: 0,
                 key: b"key",
                 value: b"value",
             };
-            let record = MessageSet {
-                offset: 0,
-                message_size: i32::try_from(message.encode_len()).unwrap(),
-                message,
-            };
+            let record = MessageSet { offset: 0, message };
             record.encode(&mut record_set);
         }
         let produce_response = client
@@ -563,6 +548,8 @@ mod tests {
         assert_eq!(
             produce_response.responses[0].partition_responses[0].error_code,
             ErrorCode::None,
+            "Expected no errors: {:#?}",
+            produce_response.responses[0].partition_responses[0],
         );
     }
 }

@@ -17,7 +17,7 @@ impl<'i> crate::Encode for FindCoordinatorRequest<'i> {
     fn encode_len(&self) -> usize {
         self.key.encode_len() + self.key_type.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.key.encode(writer);
         self.key_type.encode(writer);
     }

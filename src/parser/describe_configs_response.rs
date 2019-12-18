@@ -82,7 +82,7 @@ impl<'i> crate::Encode for DescribeConfigsResponse<'i> {
     fn encode_len(&self) -> usize {
         self.throttle_time_ms.encode_len() + self.resources.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.resources.encode(writer);
     }
@@ -103,7 +103,7 @@ impl<'i> crate::Encode for ConfigSynonyms<'i> {
             + self.config_value.encode_len()
             + self.config_source.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.config_name.encode(writer);
         self.config_value.encode(writer);
         self.config_source.encode(writer);
@@ -129,7 +129,7 @@ impl<'i> crate::Encode for ConfigEntries<'i> {
             + self.is_sensitive.encode_len()
             + self.config_synonyms.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.config_name.encode(writer);
         self.config_value.encode(writer);
         self.read_only.encode(writer);
@@ -156,7 +156,7 @@ impl<'i> crate::Encode for Resources<'i> {
             + self.resource_name.encode_len()
             + self.config_entries.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.error_message.encode(writer);
         self.resource_type.encode(writer);

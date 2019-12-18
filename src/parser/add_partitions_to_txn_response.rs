@@ -46,7 +46,7 @@ impl<'i> crate::Encode for AddPartitionsToTxnResponse<'i> {
     fn encode_len(&self) -> usize {
         self.throttle_time_ms.encode_len() + self.errors.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.errors.encode(writer);
     }
@@ -64,7 +64,7 @@ impl crate::Encode for PartitionErrors {
     fn encode_len(&self) -> usize {
         self.partition.encode_len() + self.error_code.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.error_code.encode(writer);
     }
@@ -80,7 +80,7 @@ impl<'i> crate::Encode for Errors<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partition_errors.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partition_errors.encode(writer);
     }

@@ -19,7 +19,7 @@ impl crate::Encode for UpdateMetadataResponse {
     fn encode_len(&self) -> usize {
         self.error_code.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
     }
 }

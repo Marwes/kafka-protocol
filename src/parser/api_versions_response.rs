@@ -46,7 +46,7 @@ impl crate::Encode for ApiVersionsResponse {
             + self.api_versions.encode_len()
             + self.throttle_time_ms.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.api_versions.encode(writer);
         self.throttle_time_ms.encode(writer);
@@ -66,7 +66,7 @@ impl crate::Encode for ApiVersions {
     fn encode_len(&self) -> usize {
         self.api_key.encode_len() + self.min_version.encode_len() + self.max_version.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.api_key.encode(writer);
         self.min_version.encode(writer);
         self.max_version.encode(writer);

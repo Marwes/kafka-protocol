@@ -14,7 +14,7 @@ impl crate::Encode for ApiVersionsRequest {
     fn encode_len(&self) -> usize {
         0
     }
-    fn encode(&self, _: &mut impl bytes::BufMut) {}
+    fn encode(&self, _: &mut impl Buffer) {}
 }
 
 pub const VERSION: i16 = 2;

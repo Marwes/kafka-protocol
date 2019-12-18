@@ -30,7 +30,7 @@ impl<'i> crate::Encode for CreateDelegationTokenRequest<'i> {
     fn encode_len(&self) -> usize {
         self.renewers.encode_len() + self.max_life_time.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.renewers.encode(writer);
         self.max_life_time.encode(writer);
     }
@@ -48,7 +48,7 @@ impl<'i> crate::Encode for Renewers<'i> {
     fn encode_len(&self) -> usize {
         self.principal_type.encode_len() + self.name.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.principal_type.encode(writer);
         self.name.encode(writer);
     }

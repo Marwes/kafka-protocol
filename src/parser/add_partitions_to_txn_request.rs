@@ -38,7 +38,7 @@ impl<'i> crate::Encode for AddPartitionsToTxnRequest<'i> {
             + self.producer_epoch.encode_len()
             + self.topics.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.transactional_id.encode(writer);
         self.producer_id.encode(writer);
         self.producer_epoch.encode(writer);
@@ -58,7 +58,7 @@ impl<'i> crate::Encode for Topics<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partitions.encode(writer);
     }

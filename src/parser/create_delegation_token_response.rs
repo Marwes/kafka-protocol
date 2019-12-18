@@ -68,7 +68,7 @@ impl<'i> crate::Encode for CreateDelegationTokenResponse<'i> {
             + self.hmac.encode_len()
             + self.throttle_time_ms.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.owner.encode(writer);
         self.issue_timestamp.encode(writer);
@@ -92,7 +92,7 @@ impl<'i> crate::Encode for Owner<'i> {
     fn encode_len(&self) -> usize {
         self.principal_type.encode_len() + self.name.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.principal_type.encode(writer);
         self.name.encode(writer);
     }

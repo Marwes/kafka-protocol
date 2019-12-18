@@ -79,7 +79,7 @@ impl<'i> crate::Encode for DeleteAclsResponse<'i> {
     fn encode_len(&self) -> usize {
         self.throttle_time_ms.encode_len() + self.filter_responses.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.filter_responses.encode(writer);
     }
@@ -112,7 +112,7 @@ impl<'i> crate::Encode for MatchingAcls<'i> {
             + self.operation.encode_len()
             + self.permission_type.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.error_message.encode(writer);
         self.resource_type.encode(writer);
@@ -138,7 +138,7 @@ impl<'i> crate::Encode for FilterResponses<'i> {
             + self.error_message.encode_len()
             + self.matching_acls.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.error_message.encode(writer);
         self.matching_acls.encode(writer);

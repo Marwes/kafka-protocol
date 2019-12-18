@@ -23,7 +23,7 @@ impl<'i> crate::Encode for DescribeDelegationTokenRequest<'i> {
     fn encode_len(&self) -> usize {
         self.owners.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.owners.encode(writer);
     }
 }
@@ -40,7 +40,7 @@ impl<'i> crate::Encode for Owners<'i> {
     fn encode_len(&self) -> usize {
         self.principal_type.encode_len() + self.name.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.principal_type.encode(writer);
         self.name.encode(writer);
     }

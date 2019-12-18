@@ -27,7 +27,7 @@ impl<'i> crate::Encode for AlterReplicaLogDirsRequest<'i> {
     fn encode_len(&self) -> usize {
         self.log_dirs.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.log_dirs.encode(writer);
     }
 }
@@ -44,7 +44,7 @@ impl<'i> crate::Encode for Topics<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partitions.encode(writer);
     }
@@ -60,7 +60,7 @@ impl<'i> crate::Encode for LogDirs<'i> {
     fn encode_len(&self) -> usize {
         self.log_dir.encode_len() + self.topics.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.log_dir.encode(writer);
         self.topics.encode(writer);
     }

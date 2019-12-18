@@ -21,7 +21,7 @@ impl<'i> crate::Encode for ExpireDelegationTokenRequest<'i> {
     fn encode_len(&self) -> usize {
         self.hmac.encode_len() + self.expiry_time_period.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.hmac.encode(writer);
         self.expiry_time_period.encode(writer);
     }

@@ -46,7 +46,7 @@ impl<'i> crate::Encode for SyncGroupRequest<'i> {
             + self.group_instance_id.encode_len()
             + self.assignments.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.group_id.encode(writer);
         self.generation_id.encode(writer);
         self.member_id.encode(writer);
@@ -67,7 +67,7 @@ impl<'i> crate::Encode for Assignments<'i> {
     fn encode_len(&self) -> usize {
         self.member_id.encode_len() + self.assignment.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.member_id.encode(writer);
         self.assignment.encode(writer);
     }

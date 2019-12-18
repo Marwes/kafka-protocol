@@ -67,7 +67,7 @@ impl<'i> crate::Encode for JoinGroupResponse<'i> {
             + self.member_id.encode_len()
             + self.members.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.error_code.encode(writer);
         self.generation_id.encode(writer);
@@ -93,7 +93,7 @@ impl<'i> crate::Encode for Members<'i> {
             + self.group_instance_id.encode_len()
             + self.metadata.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.member_id.encode(writer);
         self.group_instance_id.encode(writer);
         self.metadata.encode(writer);

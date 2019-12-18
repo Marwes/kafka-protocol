@@ -47,7 +47,7 @@ impl<'i> crate::Encode for WriteTxnMarkersResponse<'i> {
     fn encode_len(&self) -> usize {
         self.transaction_markers.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.transaction_markers.encode(writer);
     }
 }
@@ -64,7 +64,7 @@ impl crate::Encode for Partitions {
     fn encode_len(&self) -> usize {
         self.partition.encode_len() + self.error_code.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.error_code.encode(writer);
     }
@@ -80,7 +80,7 @@ impl<'i> crate::Encode for Topics<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partitions.encode(writer);
     }
@@ -96,7 +96,7 @@ impl<'i> crate::Encode for TransactionMarkers<'i> {
     fn encode_len(&self) -> usize {
         self.producer_id.encode_len() + self.topics.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.producer_id.encode(writer);
         self.topics.encode(writer);
     }

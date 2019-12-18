@@ -34,7 +34,7 @@ impl crate::Encode for RenewDelegationTokenResponse {
             + self.expiry_timestamp.encode_len()
             + self.throttle_time_ms.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.expiry_timestamp.encode(writer);
         self.throttle_time_ms.encode(writer);

@@ -32,7 +32,7 @@ impl<'i> crate::Encode for DeleteTopicsResponse<'i> {
     fn encode_len(&self) -> usize {
         self.throttle_time_ms.encode_len() + self.responses.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.responses.encode(writer);
     }
@@ -50,7 +50,7 @@ impl<'i> crate::Encode for Responses<'i> {
     fn encode_len(&self) -> usize {
         self.name.encode_len() + self.error_code.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.name.encode(writer);
         self.error_code.encode(writer);
     }

@@ -34,7 +34,7 @@ impl<'i> crate::Encode for ControlledShutdownResponse<'i> {
     fn encode_len(&self) -> usize {
         self.error_code.encode_len() + self.remaining_partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.remaining_partitions.encode(writer);
     }
@@ -52,7 +52,7 @@ impl<'i> crate::Encode for RemainingPartitions<'i> {
     fn encode_len(&self) -> usize {
         self.topic_name.encode_len() + self.partition_index.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic_name.encode(writer);
         self.partition_index.encode(writer);
     }

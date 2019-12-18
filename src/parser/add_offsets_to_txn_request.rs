@@ -30,7 +30,7 @@ impl<'i> crate::Encode for AddOffsetsToTxnRequest<'i> {
             + self.producer_epoch.encode_len()
             + self.group_id.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.transactional_id.encode(writer);
         self.producer_id.encode(writer);
         self.producer_epoch.encode(writer);

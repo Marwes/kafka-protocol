@@ -57,7 +57,7 @@ impl<'i> crate::Encode for JoinGroupRequest<'i> {
             + self.protocol_type.encode_len()
             + self.protocols.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.group_id.encode(writer);
         self.session_timeout_ms.encode(writer);
         self.rebalance_timeout_ms.encode(writer);
@@ -80,7 +80,7 @@ impl<'i> crate::Encode for Protocols<'i> {
     fn encode_len(&self) -> usize {
         self.name.encode_len() + self.metadata.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.name.encode(writer);
         self.metadata.encode(writer);
     }

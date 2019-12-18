@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 combine = "4.0.0-beta.1"
+crc = "1"
 bytes = "0.5"
 integer-encoding = "1"
 log = "0.4"

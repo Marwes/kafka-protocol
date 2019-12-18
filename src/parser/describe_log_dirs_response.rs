@@ -53,7 +53,7 @@ impl<'i> crate::Encode for DescribeLogDirsResponse<'i> {
     fn encode_len(&self) -> usize {
         self.throttle_time_ms.encode_len() + self.log_dirs.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.log_dirs.encode(writer);
     }
@@ -76,7 +76,7 @@ impl crate::Encode for Partitions {
             + self.offset_lag.encode_len()
             + self.is_future.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.size.encode(writer);
         self.offset_lag.encode(writer);
@@ -94,7 +94,7 @@ impl<'i> crate::Encode for Topics<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partitions.encode(writer);
     }
@@ -111,7 +111,7 @@ impl<'i> crate::Encode for LogDirs<'i> {
     fn encode_len(&self) -> usize {
         self.error_code.encode_len() + self.log_dir.encode_len() + self.topics.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.log_dir.encode(writer);
         self.topics.encode(writer);

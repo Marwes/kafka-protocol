@@ -46,7 +46,7 @@ impl<'i> crate::Encode for StopReplicaRequest<'i> {
             + self.delete_partitions.encode_len()
             + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.controller_id.encode(writer);
         self.controller_epoch.encode(writer);
         self.broker_epoch.encode(writer);
@@ -67,7 +67,7 @@ impl<'i> crate::Encode for Partitions<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partition_ids.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partition_ids.encode(writer);
     }

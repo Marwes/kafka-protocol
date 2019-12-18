@@ -292,7 +292,7 @@ mod regenerate {
                     } else {
                         "writer"
                     },
-                    ": &mut impl bytes::BufMut) {",
+                    ": &mut impl Buffer) {",
                     chain![arena;
                         arena.line_(),
                         arena.intersperse(self.production.iter().map(|elem| {
@@ -529,12 +529,25 @@ mod regenerate {
         let mut parser_out = io::BufWriter::new(fs::File::create("src/parser.rs")?);
         writeln!(parser_out, "use super::*;")?;
 
+        let mut calls = std::collections::BTreeMap::<_, (Option<_>, Option<_>)>::new();
         for rule in rules
-            .into_iter()
+            .iter()
             .group_by(|rule| rule.name)
             .into_iter()
             .map(|iter| iter.1.last().unwrap())
         {
+            let entry = calls
+                .entry(
+                    rule.name
+                        .trim_end_matches(" Request")
+                        .trim_end_matches(" Response"),
+                )
+                .or_default();
+            if rule.name.ends_with("Request") {
+                entry.0 = Some(rule);
+            } else {
+                entry.1 = Some(rule);
+            }
             let type_name = rule.name.replace(" ", "");
             let name = inflector::cases::snakecase::to_snake_case(&type_name);
             let mut out = io::BufWriter::new(
@@ -554,6 +567,34 @@ mod regenerate {
                 type_name = type_name
             )?;
         }
+
+        writeln!(
+            parser_out,
+            "{}",
+            r#"impl<I> Client<I>
+where
+    I: AsyncRead + AsyncWrite + std::marker::Unpin,
+{"#
+        )?;
+        for (call, (request, response)) in calls
+            .into_iter()
+            .filter(|(call, _)| *call != "Response Header" && *call != "Request Header")
+        {
+            let base_type_name = call.replace(" ", "");
+            let name = inflector::cases::snakecase::to_snake_case(&base_type_name);
+
+            writeln!(
+                parser_out,
+                "pub async fn {name}<'i>(&'i mut self, request: {base_type_name}Request{request_lt}) -> io::Result<{base_type_name}Response{response_lt}> {{",
+                name = name,
+                base_type_name = base_type_name,
+                request_lt = request.unwrap().lifetime(),
+                response_lt = response.unwrap().lifetime(),
+            )?;
+            writeln!(parser_out, "    self.call(request, ApiKey::{base_type_name}, {name}_request::VERSION, {name}_response()).await", name = name, base_type_name = base_type_name)?;
+            writeln!(parser_out, "}}")?;
+        }
+        writeln!(parser_out, "}}")?;
         Ok(())
     }
 

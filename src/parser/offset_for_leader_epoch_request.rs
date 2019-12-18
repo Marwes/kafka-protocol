@@ -36,7 +36,7 @@ impl<'i> crate::Encode for OffsetForLeaderEpochRequest<'i> {
     fn encode_len(&self) -> usize {
         self.replica_id.encode_len() + self.topics.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.replica_id.encode(writer);
         self.topics.encode(writer);
     }
@@ -57,7 +57,7 @@ impl crate::Encode for Partitions {
             + self.current_leader_epoch.encode_len()
             + self.leader_epoch.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.current_leader_epoch.encode(writer);
         self.leader_epoch.encode(writer);
@@ -74,7 +74,7 @@ impl<'i> crate::Encode for Topics<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partitions.encode(writer);
     }

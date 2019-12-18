@@ -29,7 +29,7 @@ impl<'i> crate::Encode for EndTxnRequest<'i> {
             + self.producer_epoch.encode_len()
             + self.transaction_result.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.transactional_id.encode(writer);
         self.producer_id.encode(writer);
         self.producer_epoch.encode(writer);

@@ -48,7 +48,7 @@ impl<'i> crate::Encode for CreateAclsRequest<'i> {
     fn encode_len(&self) -> usize {
         self.creations.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.creations.encode(writer);
     }
 }
@@ -76,7 +76,7 @@ impl<'i> crate::Encode for Creations<'i> {
             + self.operation.encode_len()
             + self.permission_type.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.resource_type.encode(writer);
         self.resource_name.encode(writer);
         self.resource_pattern_type.encode(writer);

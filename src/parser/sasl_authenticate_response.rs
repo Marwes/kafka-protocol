@@ -40,7 +40,7 @@ impl<'i> crate::Encode for SaslAuthenticateResponse<'i> {
             + self.auth_bytes.encode_len()
             + self.session_lifetime_ms.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.error_message.encode(writer);
         self.auth_bytes.encode(writer);

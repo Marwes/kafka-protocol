@@ -75,7 +75,7 @@ impl<'i> crate::Encode for DescribeGroupsResponse<'i> {
     fn encode_len(&self) -> usize {
         self.throttle_time_ms.encode_len() + self.groups.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.groups.encode(writer);
     }
@@ -100,7 +100,7 @@ impl<'i> crate::Encode for Members<'i> {
             + self.member_metadata.encode_len()
             + self.member_assignment.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.member_id.encode(writer);
         self.client_id.encode(writer);
         self.client_host.encode(writer);
@@ -130,7 +130,7 @@ impl<'i> crate::Encode for Groups<'i> {
             + self.members.encode_len()
             + self.authorized_operations.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.group_id.encode(writer);
         self.group_state.encode(writer);

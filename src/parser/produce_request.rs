@@ -46,7 +46,7 @@ impl<'i> crate::Encode for ProduceRequest<'i> {
             + self.timeout.encode_len()
             + self.topic_data.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.transactional_id.encode(writer);
         self.acks.encode(writer);
         self.timeout.encode(writer);
@@ -66,7 +66,7 @@ impl<'i> crate::Encode for Data<'i> {
     fn encode_len(&self) -> usize {
         self.partition.encode_len() + self.record_set.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.record_set.encode(writer);
     }
@@ -82,7 +82,7 @@ impl<'i> crate::Encode for TopicData<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.data.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.data.encode(writer);
     }

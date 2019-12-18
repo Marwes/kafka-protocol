@@ -39,7 +39,7 @@ impl<'i> crate::Encode for StopReplicaResponse<'i> {
     fn encode_len(&self) -> usize {
         self.error_code.encode_len() + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.partitions.encode(writer);
     }
@@ -58,7 +58,7 @@ impl<'i> crate::Encode for Partitions<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partition.encode_len() + self.error_code.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partition.encode(writer);
         self.error_code.encode(writer);

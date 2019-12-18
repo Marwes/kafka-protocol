@@ -37,7 +37,7 @@ impl<'i> crate::Encode for DeleteGroupsResponse<'i> {
     fn encode_len(&self) -> usize {
         self.throttle_time_ms.encode_len() + self.group_error_codes.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.group_error_codes.encode(writer);
     }
@@ -55,7 +55,7 @@ impl<'i> crate::Encode for GroupErrorCodes<'i> {
     fn encode_len(&self) -> usize {
         self.group_id.encode_len() + self.error_code.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.group_id.encode(writer);
         self.error_code.encode(writer);
     }

@@ -42,7 +42,7 @@ impl<'i> crate::Encode for MetadataRequest<'i> {
             + self.include_cluster_authorized_operations.encode_len()
             + self.include_topic_authorized_operations.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topics.encode(writer);
         self.allow_auto_topic_creation.encode(writer);
         self.include_cluster_authorized_operations.encode(writer);
@@ -61,7 +61,7 @@ impl<'i> crate::Encode for Topics<'i> {
     fn encode_len(&self) -> usize {
         self.name.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.name.encode(writer);
     }
 }

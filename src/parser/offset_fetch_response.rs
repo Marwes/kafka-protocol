@@ -64,7 +64,7 @@ impl<'i> crate::Encode for OffsetFetchResponse<'i> {
             + self.responses.encode_len()
             + self.error_code.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.responses.encode(writer);
         self.error_code.encode(writer);
@@ -90,7 +90,7 @@ impl<'i> crate::Encode for PartitionResponses<'i> {
             + self.metadata.encode_len()
             + self.error_code.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.offset.encode(writer);
         self.leader_epoch.encode(writer);
@@ -109,7 +109,7 @@ impl<'i> crate::Encode for Responses<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partition_responses.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partition_responses.encode(writer);
     }

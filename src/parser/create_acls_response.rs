@@ -37,7 +37,7 @@ impl<'i> crate::Encode for CreateAclsResponse<'i> {
     fn encode_len(&self) -> usize {
         self.throttle_time_ms.encode_len() + self.creation_responses.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.creation_responses.encode(writer);
     }
@@ -55,7 +55,7 @@ impl<'i> crate::Encode for CreationResponses<'i> {
     fn encode_len(&self) -> usize {
         self.error_code.encode_len() + self.error_message.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.error_message.encode(writer);
     }

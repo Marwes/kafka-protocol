@@ -41,7 +41,7 @@ impl<'i> crate::Encode for WriteTxnMarkersRequest<'i> {
     fn encode_len(&self) -> usize {
         self.transaction_markers.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.transaction_markers.encode(writer);
     }
 }
@@ -58,7 +58,7 @@ impl<'i> crate::Encode for Topics<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partitions.encode(writer);
     }
@@ -81,7 +81,7 @@ impl<'i> crate::Encode for TransactionMarkers<'i> {
             + self.topics.encode_len()
             + self.coordinator_epoch.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.producer_id.encode(writer);
         self.producer_epoch.encode(writer);
         self.transaction_result.encode(writer);

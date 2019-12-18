@@ -26,7 +26,7 @@ impl<'i> crate::Encode for SaslHandshakeResponse<'i> {
     fn encode_len(&self) -> usize {
         self.error_code.encode_len() + self.mechanisms.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.mechanisms.encode(writer);
     }

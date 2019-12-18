@@ -32,7 +32,7 @@ impl<'i> crate::Encode for ElectPreferredLeadersRequest<'i> {
     fn encode_len(&self) -> usize {
         self.topic_partitions.encode_len() + self.timeout_ms.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic_partitions.encode(writer);
         self.timeout_ms.encode(writer);
     }
@@ -50,7 +50,7 @@ impl<'i> crate::Encode for TopicPartitions<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partition_id.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partition_id.encode(writer);
     }

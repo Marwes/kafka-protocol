@@ -53,7 +53,7 @@ impl<'i> crate::Encode for CreateTopicsRequest<'i> {
     fn encode_len(&self) -> usize {
         self.topics.encode_len() + self.timeout_ms.encode_len() + self.validate_only.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topics.encode(writer);
         self.timeout_ms.encode(writer);
         self.validate_only.encode(writer);
@@ -72,7 +72,7 @@ impl crate::Encode for Assignments {
     fn encode_len(&self) -> usize {
         self.partition_index.encode_len() + self.broker_ids.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition_index.encode(writer);
         self.broker_ids.encode(writer);
     }
@@ -88,7 +88,7 @@ impl<'i> crate::Encode for Configs<'i> {
     fn encode_len(&self) -> usize {
         self.name.encode_len() + self.value.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.name.encode(writer);
         self.value.encode(writer);
     }
@@ -111,7 +111,7 @@ impl<'i> crate::Encode for Topics<'i> {
             + self.assignments.encode_len()
             + self.configs.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.name.encode(writer);
         self.num_partitions.encode(writer);
         self.replication_factor.encode(writer);

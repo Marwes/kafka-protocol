@@ -116,7 +116,7 @@ impl<'i> crate::Encode for MetadataResponse<'i> {
             + self.topics.encode_len()
             + self.cluster_authorized_operations.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.brokers.encode(writer);
         self.cluster_id.encode(writer);
@@ -143,7 +143,7 @@ impl<'i> crate::Encode for Brokers<'i> {
             + self.port.encode_len()
             + self.rack.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.node_id.encode(writer);
         self.host.encode(writer);
         self.port.encode(writer);
@@ -172,7 +172,7 @@ impl crate::Encode for Partitions {
             + self.isr_nodes.encode_len()
             + self.offline_replicas.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.partition_index.encode(writer);
         self.leader_id.encode(writer);
@@ -200,7 +200,7 @@ impl<'i> crate::Encode for Topics<'i> {
             + self.partitions.encode_len()
             + self.topic_authorized_operations.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.error_code.encode(writer);
         self.name.encode(writer);
         self.is_internal.encode(writer);

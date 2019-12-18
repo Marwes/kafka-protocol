@@ -37,7 +37,7 @@ impl crate::Encode for InitProducerIdResponse {
             + self.producer_id.encode_len()
             + self.producer_epoch.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.throttle_time_ms.encode(writer);
         self.error_code.encode(writer);
         self.producer_id.encode(writer);

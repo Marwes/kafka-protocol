@@ -56,7 +56,7 @@ impl<'i> crate::Encode for TxnOffsetCommitRequest<'i> {
             + self.producer_epoch.encode_len()
             + self.topics.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.transactional_id.encode(writer);
         self.group_id.encode(writer);
         self.producer_id.encode(writer);
@@ -82,7 +82,7 @@ impl<'i> crate::Encode for Partitions<'i> {
             + self.leader_epoch.encode_len()
             + self.metadata.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.offset.encode(writer);
         self.leader_epoch.encode(writer);
@@ -100,7 +100,7 @@ impl<'i> crate::Encode for Topics<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partitions.encode(writer);
     }

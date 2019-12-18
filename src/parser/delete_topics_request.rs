@@ -20,7 +20,7 @@ impl<'i> crate::Encode for DeleteTopicsRequest<'i> {
     fn encode_len(&self) -> usize {
         self.topic_names.encode_len() + self.timeout_ms.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic_names.encode(writer);
         self.timeout_ms.encode(writer);
     }

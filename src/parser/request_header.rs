@@ -37,7 +37,7 @@ impl<'i> crate::Encode for RequestHeader<'i> {
             + self.correlation_id.encode_len()
             + self.client_id.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.api_key.encode(writer);
         self.api_version.encode(writer);
         self.correlation_id.encode(writer);

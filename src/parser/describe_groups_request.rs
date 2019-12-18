@@ -22,7 +22,7 @@ impl<'i> crate::Encode for DescribeGroupsRequest<'i> {
     fn encode_len(&self) -> usize {
         self.groups.encode_len() + self.include_authorized_operations.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.groups.encode(writer);
         self.include_authorized_operations.encode(writer);
     }

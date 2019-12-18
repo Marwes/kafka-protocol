@@ -104,7 +104,7 @@ impl<'i> crate::Encode for UpdateMetadataRequest<'i> {
             + self.topic_states.encode_len()
             + self.live_brokers.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.controller_id.encode(writer);
         self.controller_epoch.encode(writer);
         self.broker_epoch.encode(writer);
@@ -138,7 +138,7 @@ impl crate::Encode for PartitionStates {
             + self.replicas.encode_len()
             + self.offline_replicas.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.controller_epoch.encode(writer);
         self.leader.encode(writer);
@@ -160,7 +160,7 @@ impl<'i> crate::Encode for TopicStates<'i> {
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partition_states.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
         self.partition_states.encode(writer);
     }
@@ -181,7 +181,7 @@ impl<'i> crate::Encode for EndPoints<'i> {
             + self.listener_name.encode_len()
             + self.security_protocol_type.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.port.encode(writer);
         self.host.encode(writer);
         self.listener_name.encode(writer);
@@ -200,7 +200,7 @@ impl<'i> crate::Encode for LiveBrokers<'i> {
     fn encode_len(&self) -> usize {
         self.id.encode_len() + self.end_points.encode_len() + self.rack.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.id.encode(writer);
         self.end_points.encode(writer);
         self.rack.encode(writer);

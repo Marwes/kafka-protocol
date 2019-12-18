@@ -32,7 +32,7 @@ impl<'i> crate::Encode for DescribeConfigsRequest<'i> {
     fn encode_len(&self) -> usize {
         self.resources.encode_len() + self.include_synonyms.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.resources.encode(writer);
         self.include_synonyms.encode(writer);
     }
@@ -53,7 +53,7 @@ impl<'i> crate::Encode for Resources<'i> {
             + self.resource_name.encode_len()
             + self.config_names.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.resource_type.encode(writer);
         self.resource_name.encode(writer);
         self.config_names.encode(writer);

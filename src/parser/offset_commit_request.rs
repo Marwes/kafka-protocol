@@ -61,7 +61,7 @@ impl<'i> crate::Encode for OffsetCommitRequest<'i> {
             + self.group_instance_id.encode_len()
             + self.topics.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.group_id.encode(writer);
         self.generation_id.encode(writer);
         self.member_id.encode(writer);
@@ -87,7 +87,7 @@ impl<'i> crate::Encode for Partitions<'i> {
             + self.committed_leader_epoch.encode_len()
             + self.committed_metadata.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.partition_index.encode(writer);
         self.committed_offset.encode(writer);
         self.committed_leader_epoch.encode(writer);
@@ -105,7 +105,7 @@ impl<'i> crate::Encode for Topics<'i> {
     fn encode_len(&self) -> usize {
         self.name.encode_len() + self.partitions.encode_len()
     }
-    fn encode(&self, writer: &mut impl bytes::BufMut) {
+    fn encode(&self, writer: &mut impl Buffer) {
         self.name.encode(writer);
         self.partitions.encode(writer);
     }
