@@ -504,11 +504,11 @@ mod tests {
                 value: b"value",
             };
             let record = MessageSet {
-                offset: 0,
+                offset: 1,
                 message_size: i32::try_from(message.encode_len()).unwrap(),
                 message,
             };
-            record.encode(&mut record_set);
+            vec![record].encode(&mut record_set);
         }
         let produce_response = client
             .produce(ProduceRequest {
