@@ -467,7 +467,7 @@ where
         let response_len = usize::try_from(response_len).expect("Valid len");
         log::trace!("Response len: {}", response_len);
 
-        self.buf.reserve(self.buf.len() + response_len);
+        self.buf.reserve(response_len + mem::size_of::<i32>());
 
         while self.buf.len() < response_len + mem::size_of::<i32>() {
             if self.io.read_buf(&mut self.buf).await? == 0 {
@@ -482,8 +482,9 @@ where
         let (response, rest) = parser.parse(rest).expect("Invalid response");
         assert!(
             rest.is_empty(),
-            "{} bytes remaining in response",
-            rest.len()
+            "{} bytes remaining in response: {:?}",
+            rest.len(),
+            rest
         );
 
         Ok(response)
@@ -493,6 +494,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use std::time::Duration;
 
     fn kafka_host() -> String {
         std::str::from_utf8(
@@ -507,30 +510,9 @@ mod tests {
         .into()
     }
 
-    #[tokio::test]
-    async fn api_versions() {
-        let _ = env_logger::try_init();
-
-        let mut client = Client::connect(kafka_host()).await.unwrap();
-        let api_versions_response = client
-            .api_versions(crate::parser::api_versions_request::ApiVersionsRequest {})
-            .await
-            .unwrap();
-        eprintln!("{:#?}", api_versions_response);
-    }
-
-    #[tokio::test]
-    async fn produce() {
-        let _ = env_logger::try_init();
-
-        use crate::parser::{
-            produce_request::{Data, TopicData},
-            CreateTopicsRequest, ProduceRequest,
-        };
-        let mut client = Client::connect(kafka_host()).await.unwrap();
-
+    async fn create_test_topic(client: &mut Client<tokio::net::TcpStream>) {
         let create_topics_response = client
-            .create_topics(CreateTopicsRequest {
+            .create_topics(crate::parser::CreateTopicsRequest {
                 timeout_ms: 1000,
                 topics: vec![crate::parser::create_topics_request::Topics {
                     assignments: vec![],
@@ -551,6 +533,27 @@ mod tests {
             "{:#?}",
             create_topics_response
         );
+    }
+
+    #[tokio::test]
+    async fn api_versions() {
+        let _ = env_logger::try_init();
+
+        let mut client = Client::connect(kafka_host()).await.unwrap();
+        let api_versions_response = client
+            .api_versions(crate::parser::api_versions_request::ApiVersionsRequest {})
+            .await
+            .unwrap();
+        eprintln!("{:#?}", api_versions_response);
+    }
+
+    #[tokio::test]
+    async fn metadata() {
+        let _ = env_logger::try_init();
+
+        let mut client = Client::connect(kafka_host()).await.unwrap();
+
+        create_test_topic(&mut client).await;
 
         let metadata = client
             .metadata(crate::parser::MetadataRequest {
@@ -568,6 +571,19 @@ mod tests {
             "{:#?}",
             metadata
         );
+    }
+
+    #[tokio::test]
+    async fn produce() {
+        let _ = env_logger::try_init();
+
+        use crate::parser::{
+            produce_request::{Data, TopicData},
+            ProduceRequest,
+        };
+        let mut client = Client::connect(kafka_host()).await.unwrap();
+
+        create_test_topic(&mut client).await;
 
         let mut record_set = Vec::new();
         {
@@ -616,5 +632,42 @@ mod tests {
             "Expected no errors: {:#?}",
             produce_response.responses[0].partition_responses[0],
         );
+    }
+
+    #[tokio::test]
+    async fn fetch() {
+        let _ = env_logger::try_init();
+
+        use crate::parser::FetchRequest;
+        let mut client = Client::connect(kafka_host()).await.unwrap();
+
+        create_test_topic(&mut client).await;
+
+        let fetch = client
+            .fetch(FetchRequest {
+                replica_id: 0,
+                session_epoch: 0,
+                forgotten_topics_data: Vec::new(),
+                isolation_level: 0,
+                session_id: 0,
+                min_bytes: 1,
+                max_bytes: 1024 * 1024,
+                rack_id: "",
+                max_wait_time: i32::try_from(Duration::from_millis(10).as_millis()).unwrap(),
+                topics: vec![crate::parser::fetch_request::Topics {
+                    topic: "test",
+                    partitions: vec![crate::parser::fetch_request::Partitions {
+                        current_leader_epoch: 0,
+                        fetch_offset: 0,
+                        log_start_offset: 0,
+                        partition: 0,
+                        partition_max_bytes: 1024 * 128,
+                    }],
+                }],
+            })
+            .await
+            .unwrap();
+
+        panic!("{:#?}", fetch);
     }
 }
