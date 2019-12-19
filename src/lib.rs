@@ -1,9 +1,9 @@
 use std::{convert::TryFrom, mem, str};
 
 use combine::{
-    byte::num::{be_i16, be_i32, be_i64},
     error::StreamError,
     parser::{
+        byte::num::{be_i16, be_i32, be_i64},
         range,
         token::{any, value},
     },
@@ -24,6 +24,46 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     any().map(|b| b as i8)
+}
+
+fn varint<'i, I>() -> impl Parser<I, Output = i32>
+where
+    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
+{
+    combine::parser::function::parser(move |input: &mut I| {
+        let range = input.range();
+        let (value, out) = i32::decode_var(range);
+        combine::stream::uncons_range(input, out).into_result()?;
+        Ok((value, combine::error::Commit::Commit(())))
+    })
+}
+
+fn vararray<'i, I, P>(mut elem_parser: impl FnMut() -> P) -> impl Parser<I, Output = Vec<P::Output>>
+where
+    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
+    P: Parser<I>,
+{
+    varint().then_partial(move |&mut len| {
+        if let Ok(len) = usize::try_from(len) {
+            combine::parser::repeat::count_min_max(len, len, elem_parser()).left()
+        } else {
+            combine::parser::function::parser(|_| {
+                Ok((Vec::new(), combine::error::Commit::Peek(())))
+            })
+            .right()
+        }
+    })
+}
+fn varbytes<'i, I>() -> impl Parser<I, Output = &'i [u8]>
+where
+    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
+{
+    varint()
+        .and_then(|len| usize::try_from(len).map_err(StreamErrorFor::<I>::other))
+        .then_partial(|&mut len| range::take(len))
 }
 
 fn string<'i, I>() -> impl Parser<I, Output = &'i str>
@@ -80,10 +120,7 @@ where
         Err(err) => {
             let mut opt = Some(err);
             combine::parser::function::parser(move |_| {
-                Ok((
-                    Err(opt.take().unwrap()),
-                    combine::error::Consumed::Empty(()),
-                ))
+                Ok((Err(opt.take().unwrap()), combine::error::Commit::Peek(())))
             })
             .right()
         }
@@ -101,7 +138,7 @@ where
             combine::parser::repeat::count_min_max(len, len, elem_parser()).left()
         } else {
             combine::parser::function::parser(|_| {
-                Ok((Vec::new(), combine::error::Consumed::Empty(())))
+                Ok((Vec::new(), combine::error::Commit::Peek(())))
             })
             .right()
         }
@@ -698,5 +735,13 @@ mod tests {
             "{:#?}",
             fetch.responses[0].partition_responses[0].partition_header
         );
+
+        crate::parser::record_set()
+            .parse(
+                fetch.responses[0].partition_responses[0]
+                    .record_set
+                    .unwrap_or_default(),
+            )
+            .expect("Parse record_set");
     }
 }

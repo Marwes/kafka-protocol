@@ -223,6 +223,8 @@ pub mod incremental_alter_configs_response;
 pub use self::incremental_alter_configs_response::{
     incremental_alter_configs_response, IncrementalAlterConfigsResponse,
 };
+pub mod record_set;
+pub use self::record_set::{record_set, RecordSet};
 impl<I> Client<I>
 where
     I: AsyncRead + AsyncWrite + std::marker::Unpin,

@@ -17,6 +17,32 @@ mod regenerate {
     type DocBuilder<'i> = pretty::DocBuilder<'i, pretty::Arena<'i, ()>>;
     type Arena<'i> = &'i pretty::Arena<'i, ()>;
 
+    const RECORD_DEF: &str = r#"RecordSet => baseOffset batchLength partitionLeaderEpoch magic crc attributes lastOffsetDelta firstTimestamp maxTimestamp producerId producerEpoch baseSequence records
+    baseOffset => int64
+    batchLength => int32
+    partitionLeaderEpoch => int32
+    magic => int8
+    crc => int32
+    attributes => int16
+    lastOffsetDelta => int32
+    firstTimestamp => int64
+    maxTimestamp => int64
+    producerId => int64
+    producerEpoch => int16
+    baseSequence => int32
+    records => [:Record]
+        Record => length attributes timestampDelta offsetDelta key value
+            length => varint
+            attributes => int8
+            timestampDelta => varint
+            offsetDelta => varint
+            key => varbytes
+            value => varbytes
+            Headers => [:Header]
+                Header => headerKey Value
+                    headerKey => varstring
+                    Value => varbytes"#;
+
     macro_rules! chain {
     ($alloc: expr; $first: expr, $($rest: expr),* $(,)?) => {{
             #[allow(unused_mut)]
@@ -38,14 +64,17 @@ mod regenerate {
 
     #[derive(Debug)]
     enum Elem<'i> {
-        Multi(&'i str),
+        Multi(bool, &'i str),
         Ident(&'i str),
     }
 
     impl<'i> Elem<'i> {
+        fn snakecase_name(&self) -> String {
+            inflector::cases::snakecase::to_snake_case(self.name())
+        }
         fn name(&self) -> &'i str {
             match *self {
-                Elem::Multi(i) | Elem::Ident(i) => i,
+                Elem::Multi(_, i) | Elem::Ident(i) => i,
             }
         }
     }
@@ -57,14 +86,16 @@ mod regenerate {
             _ => (),
         }
         Some(match i {
-            _ if i.starts_with("INT") => arena.text(format!(
+            _ if i.starts_with("int") || i.starts_with("INT") => arena.text(format!(
                 "be_i{}()",
                 i.trim_start_matches(char::is_alphabetic)
             )),
-            _ if i.starts_with("UINT") => arena.text(format!(
+            _ if i.starts_with("uint") || i.starts_with("UINT") => arena.text(format!(
                 "be_u{}()",
                 i.trim_start_matches(char::is_alphabetic)
             )),
+            "varbytes" => arena.text(format!("varbytes()")),
+            "varint" => arena.text(format!("varint()")),
             "BYTES" => arena.text(format!("bytes()")),
             "NULLABLE_BYTES" => arena.text(format!("nullable_bytes()")),
             "STRING" => arena.text(format!("string()")),
@@ -83,13 +114,14 @@ mod regenerate {
             _ => (),
         }
         Some(match ty {
-            _ if ty.starts_with("INT") => {
+            _ if ty.starts_with("int") || ty.starts_with("INT") => {
                 format!("i{}", ty.trim_start_matches(char::is_alphabetic)).into()
             }
-            _ if ty.starts_with("UINT") => {
+            _ if ty.starts_with("uint") || ty.starts_with("UINT") => {
                 format!("u{}", ty.trim_start_matches(char::is_alphabetic)).into()
             }
-            "BYTES" => "&'i [u8]".into(),
+            "varint" => "i32".into(),
+            "BYTES" | "varbytes" => "&'i [u8]".into(),
             "NULLABLE_BYTES" => "Option<&'i [u8]>".into(),
             "STRING" => "&'i str".into(),
             "NULLABLE_STRING" => "Option<&'i str>".into(),
@@ -103,7 +135,7 @@ mod regenerate {
     fn write_field<'i>(name: &'i str, i: &'i str, arena: Arena<'i>) -> DocBuilder<'i> {
         chain![arena;
             "pub ",
-            name,
+            inflector::cases::snakecase::to_snake_case(&name),
             ":",
             arena.line(),
             write_ty(name, i).unwrap_or_else(|| format!("{}", i).into()),
@@ -184,13 +216,18 @@ mod regenerate {
                     arena.line_(),
                     arena.intersperse(self.production.iter().map(|elem| {
                         match *elem {
-                            Elem::Multi(i) => {
+                            Elem::Multi(varlen, i) => {
                                 let inner = self.inner
                                     .iter()
                                     .find(|rule| rule.name == i)
                                     .unwrap_or_else(|| panic!("Missing inner rule: {}", i));
                                 chain![arena;
-                                    "array(||",
+                                    if varlen {
+                                        "vararray"
+                                    } else {
+                                        "array"
+                                    },
+                                    "(||",
                                     inner.generate(i, arena),
                                     ",",
                                     "),",
@@ -215,13 +252,13 @@ mod regenerate {
                 arena.line_(),
                 ")",
                 ".map(|(",
-                arena.intersperse(self.production.iter().map(|e| e.name()), arena.text(",")),
+                arena.intersperse(self.production.iter().map(|e| e.snakecase_name()), arena.text(",")),
                 ",)| {",
                 chain![arena;
                     name,
                     "{",
                     arena.line(),
-                    arena.intersperse(self.production.iter().map(|e| e.name()), arena.text(",")),
+                    arena.intersperse(self.production.iter().map(|e| e.snakecase_name()), arena.text(",")),
                     arena.line(),
                     "}",
                 ],
@@ -278,7 +315,7 @@ mod regenerate {
                             arena.intersperse(self.production.iter().map(|elem| {
                                 chain![arena;
                                     "self.",
-                                    elem.name(),
+                                    elem.snakecase_name(),
                                     ".encode_len()",
                                 ]
                             }), arena.text(" + "))
@@ -298,7 +335,7 @@ mod regenerate {
                         arena.intersperse(self.production.iter().map(|elem| {
                             chain![arena;
                                 "self.",
-                                elem.name(),
+                                elem.snakecase_name(),
                                 ".encode(writer);",
                             ]
                         }), arena.line()),
@@ -329,7 +366,7 @@ mod regenerate {
                 arena.line_(),
                 arena.intersperse(self.production.iter().map(|elem| {
                     match *elem {
-                        Elem::Multi(i) => {
+                        Elem::Multi(_, i) => {
                             let inner = self
                                 .inner
                                 .iter()
@@ -343,7 +380,7 @@ mod regenerate {
                             {
                                 return chain![arena;
                                     "pub ",
-                                    i,
+                                    inflector::cases::snakecase::to_snake_case(i),
                                     ":",
                                     arena.line_(),
                                     "Vec<",
@@ -357,7 +394,7 @@ mod regenerate {
 
                             chain![arena;
                                 "pub ",
-                                i,
+                                inflector::cases::snakecase::to_snake_case(i),
                                 ":",
                                 arena.line(),
                                 "Vec<",
@@ -379,7 +416,7 @@ mod regenerate {
                                     {
                                         return chain![arena;
                                             "pub ",
-                                            i,
+                                            inflector::cases::snakecase::to_snake_case(i),
                                             ":",
                                             arena.line_(),
                                             ty,
@@ -392,7 +429,7 @@ mod regenerate {
 
                                     chain![arena;
                                         "pub ",
-                                        i,
+                                        inflector::cases::snakecase::to_snake_case(i),
                                         ":",
                                         arena.line(),
                                         inflector::cases::pascalcase::to_pascal_case(i),
@@ -430,8 +467,8 @@ mod regenerate {
         })
         .map(|s: &str| s.trim_end_matches('\''))
         .expected("identifier or array");
-        between(token('['), token(']'), ident())
-            .map(Elem::Multi)
+        between(token('['), token(']'), (optional(token(':')), ident()))
+            .map(|(var, elem)| Elem::Multi(var.is_some(), elem))
             .or(ident_or_array.map(Elem::Ident))
     }
 
@@ -477,7 +514,7 @@ mod regenerate {
         let (rules, rest) = many1(rule())
             .easy_parse(&input[..])
             .map_err(|err| err.map_position(|p| p.translate_position(&input[..])))
-            .unwrap_or_else(|err| panic!("{}", err));
+            .unwrap_or_else(|err| panic!("{}\nInput is {} len", err, input.len()));
         assert!(rest.trim().is_empty(), "{}", rest);
 
         fn fixup<'i>(
@@ -505,7 +542,7 @@ mod regenerate {
         eprintln!("{:#?}", rules);
         let mut iter = Vec::into_iter(rules);
         fixup(&mut current, 0, &mut iter);
-        assert_eq!(current.len(), 1);
+        assert_eq!(current.len(), 1, "Fixup did not merge all rules into one");
         assert!(iter.next().is_none());
         let rule = current.pop().unwrap();
         Ok(rule)
@@ -519,6 +556,8 @@ mod regenerate {
 
         let rules = inputs
             .iter()
+            .map(|s| s.as_str())
+            .chain(Some(RECORD_DEF))
             .enumerate()
             .map(|(i, input)| -> io::Result<_> {
                 eprintln!("Input {}: {}", i, input);
@@ -576,9 +615,10 @@ where
     I: AsyncRead + AsyncWrite + std::marker::Unpin,
 {"#
         )?;
-        for (call, (request, response)) in calls
+        for (call, request, response) in calls
             .into_iter()
             .filter(|(call, _)| *call != "Response Header" && *call != "Request Header")
+            .filter_map(|(call, (request, response))| Some((call, request?, response?)))
         {
             let base_type_name = call.replace(" ", "");
             let name = inflector::cases::snakecase::to_snake_case(&base_type_name);
@@ -588,8 +628,8 @@ where
                 "pub async fn {name}<'i>(&'i mut self, request: {base_type_name}Request{request_lt}) -> io::Result<{base_type_name}Response{response_lt}> {{",
                 name = name,
                 base_type_name = base_type_name,
-                request_lt = request.unwrap().lifetime(),
-                response_lt = response.unwrap().lifetime(),
+                request_lt = request.lifetime(),
+                response_lt = response.lifetime(),
             )?;
             writeln!(parser_out, "    self.call(request, ApiKey::{base_type_name}, {name}_request::VERSION, {name}_response()).await", name = name, base_type_name = base_type_name)?;
             writeln!(parser_out, "}}")?;
