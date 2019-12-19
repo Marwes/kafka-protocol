@@ -555,6 +555,8 @@ mod tests {
 
     use std::time::Duration;
 
+    use crate::parser::*;
+
     fn kafka_host() -> String {
         std::str::from_utf8(
             &std::process::Command::new("docker")
@@ -696,10 +698,31 @@ mod tests {
     async fn fetch() {
         let _ = env_logger::try_init();
 
-        use crate::parser::FetchRequest;
         let mut client = Client::connect(kafka_host()).await.unwrap();
 
         create_test_topic(&mut client).await;
+
+        let offset_fetch = client
+            .offset_fetch(OffsetFetchRequest {
+                group_id: "abc",
+                topics: vec![crate::parser::offset_fetch_request::Topics {
+                    topic: "test",
+                    partitions: vec![crate::parser::offset_fetch_request::Partitions {
+                        partition: 0,
+                    }],
+                }],
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(
+            offset_fetch.error_code,
+            ErrorCode::None,
+            "{:#?}",
+            offset_fetch
+        );
+        eprintln!("{:#?}", offset_fetch);
+        let fetch_offset = offset_fetch.responses[0].partition_responses[0].offset;
 
         let fetch = client
             .fetch(FetchRequest {
@@ -716,7 +739,7 @@ mod tests {
                     topic: "test",
                     partitions: vec![crate::parser::fetch_request::Partitions {
                         current_leader_epoch: 0,
-                        fetch_offset: 0,
+                        fetch_offset,
                         log_start_offset: 0,
                         partition: 0,
                         partition_max_bytes: 1024 * 128,
@@ -743,5 +766,29 @@ mod tests {
                     .unwrap_or_default(),
             )
             .expect("Parse record_set");
+    }
+
+    #[tokio::test]
+    async fn find_coordinator() {
+        let _ = env_logger::try_init();
+
+        let mut client = Client::connect(kafka_host()).await.unwrap();
+
+        create_test_topic(&mut client).await;
+
+        let find_coordinator = client
+            .find_coordinator(FindCoordinatorRequest {
+                key: "test",
+                key_type: 0,
+            })
+            .await
+            .unwrap();
+        assert_eq!(
+            find_coordinator.error_code,
+            ErrorCode::None,
+            "{:#?}",
+            find_coordinator
+        );
+        eprintln!("{:#?}", find_coordinator);
     }
 }
