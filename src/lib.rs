@@ -31,7 +31,9 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    bytes().and_then(|bs| str::from_utf8(bs).map_err(StreamErrorFor::<I>::other))
+    length_delimited(be_i16())
+        .and_then(|result| result.map_err(StreamErrorFor::<I>::other))
+        .and_then(|bs| str::from_utf8(bs).map_err(StreamErrorFor::<I>::other))
 }
 
 fn nullable_string<'i, I>() -> impl Parser<I, Output = Option<&'i str>>
@@ -39,10 +41,12 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    nullable_bytes().and_then(|bs| {
-        bs.map(|bs| str::from_utf8(bs).map_err(StreamErrorFor::<I>::other))
-            .transpose()
-    })
+    length_delimited(be_i16())
+        .map(|result| result.ok())
+        .and_then(|bs| {
+            bs.map(|bs| str::from_utf8(bs).map_err(StreamErrorFor::<I>::other))
+                .transpose()
+        })
 }
 
 fn bytes<'i, I>() -> impl Parser<I, Output = &'i [u8]>
@@ -50,9 +54,7 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    be_i16()
-        .and_then(|i| usize::try_from(i).map_err(StreamErrorFor::<I>::other))
-        .then_partial(|&mut i| range::take(i))
+    length_delimited(be_i32()).and_then(|result| result.map_err(StreamErrorFor::<I>::other))
 }
 
 fn nullable_bytes<'i, I>() -> impl Parser<I, Output = Option<&'i [u8]>>
@@ -60,11 +62,30 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    be_i16().then_partial(|&mut i| {
-        if let Ok(i) = usize::try_from(i) {
-            range::take(i).map(Some).left()
-        } else {
-            value(None).right()
+    length_delimited(be_i32()).map(|result| result.ok())
+}
+
+fn length_delimited<'i, I, P>(
+    p: P,
+) -> impl Parser<I, Output = Result<&'i [u8], <usize as TryFrom<P::Output>>::Error>>
+where
+    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
+    P: Parser<I>,
+    usize: TryFrom<P::Output>,
+    P::Output: Copy,
+{
+    p.then_partial(|&mut i| match usize::try_from(i) {
+        Ok(i) => range::take(i).map(Ok).left(),
+        Err(err) => {
+            let mut opt = Some(err);
+            combine::parser::function::parser(move |_| {
+                Ok((
+                    Err(opt.take().unwrap()),
+                    combine::error::Consumed::Empty(()),
+                ))
+            })
+            .right()
         }
     })
 }
@@ -668,6 +689,14 @@ mod tests {
             .await
             .unwrap();
 
-        panic!("{:#?}", fetch);
+        assert_eq!(fetch.responses[0].topic, "test");
+        assert_eq!(
+            fetch.responses[0].partition_responses[0]
+                .partition_header
+                .error_code,
+            ErrorCode::None,
+            "{:#?}",
+            fetch.responses[0].partition_responses[0].partition_header
+        );
     }
 }
