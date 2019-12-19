@@ -220,14 +220,12 @@ impl Encode for ApiKey {
     }
 }
 
-pub struct MessageSet<'i> {
+pub struct Message<'i> {
     offset: i64,
     // Computed
     // message_size: i32,
-    message: Message<'i>,
-}
-
-pub struct Message<'i> {
+    // Computed
+    // partition_leader_epoch: i32,
     // Computed
     // crc: i32,
     magic_byte: i8, // Version
@@ -240,22 +238,63 @@ pub struct Message<'i> {
     //     0: create time
     //     1: log append time
     // bit 4~7: unused
-    attributes: i8,
-    // timestamp: i64,
+    attributes: i16,
+    // last_offset_delta: i32,
+    timestamp: i64,
+    max_timestamp: i64,
+    producer_id: i64,
+    producer_epoch: i16,
     key: &'i [u8],
     value: &'i [u8],
+    headers: Vec<RecordHeader<'i>>,
 }
 
-impl Encode for MessageSet<'_> {
+impl Encode for Message<'_> {
     fn encode_len(&self) -> usize {
-        self.offset.encode_len() + mem::size_of::<i32>() + self.message.encode_len()
+        self.offset.encode_len()
+            + mem::size_of::<i32>()
+            + mem::size_of::<i32>()
+            +
+        mem::size_of::<i32>()
+            + self.magic_byte.encode_len()
+            + self.attributes.encode_len()
+            + mem::size_of::<i32>()
+            + self.timestamp.encode_len()
+            + self.max_timestamp.encode_len()
+            + self.producer_id.encode_len()
+            + self.producer_epoch.encode_len()
+            + mem::size_of::<i32>() // base_sequence
+            + mem::size_of::<i32>() // record_count
+            + self.key.encode_len()
+            + self.value.encode_len()
+            + i32::try_from(self.headers.len()).unwrap().required_space()
+            + self.headers.iter().map(|h| h.encode_len()).sum::<usize>()
     }
 
     fn encode(&self, writer: &mut impl Buffer) {
         self.offset.encode(writer);
         let message_size_start = writer.len();
         0i32.encode(writer); // Reserve space for message_size
-        self.message.encode(writer);
+        0i32.encode(writer); // Reserve space for partition_leader_epoch
+
+        self.magic_byte.encode(writer);
+        let crc_start = writer.len();
+        0i32.encode(writer); // Reserve space for crc
+        self.attributes.encode(writer);
+        encode_var_i32(0i32, writer); // last_offset_delta
+        self.timestamp.encode(writer);
+        self.max_timestamp.encode(writer);
+        self.producer_id.encode(writer);
+        self.producer_epoch.encode(writer);
+        (-1i32).encode(writer); // base_sequence
+        0i32.encode(writer); // record_count
+        encode_var_bytes(self.key, writer);
+        encode_var_bytes(self.value, writer);
+        encode_var_array(&self.headers, writer);
+
+        let crc_end = crc_start + mem::size_of::<i32>();
+        let crc = crc::crc32::checksum_ieee(&writer[crc_end..]);
+        writer[crc_start..crc_end].copy_from_slice(&crc.to_be_bytes());
 
         let message_size_end = message_size_start + mem::size_of::<i32>();
         let message_size = i32::try_from(writer.len() - message_size_end).unwrap();
@@ -263,33 +302,34 @@ impl Encode for MessageSet<'_> {
     }
 }
 
-impl Encode for Message<'_> {
-    fn encode_len(&self) -> usize {
-        mem::size_of::<i32>()
-            + self.magic_byte.encode_len()
-            + self.attributes.encode_len()
-            // + self.timestamp.encode_len()
-            + self.key.encode_len()
-            + self.value.encode_len()
-    }
-
-    fn encode(&self, writer: &mut impl Buffer) {
-        let crc_start = writer.len();
-        0i32.encode(writer); // Reserve space for crc
-        self.magic_byte.encode(writer);
-        self.attributes.encode(writer);
-        // self.timestamp.encode(writer);
-        self.key.encode(writer);
-        self.value.encode(writer);
-
-        let crc_end = crc_start + mem::size_of::<i32>();
-        let crc = crc::crc32::checksum_ieee(&writer[crc_end..]);
-        writer[crc_start..crc_end].copy_from_slice(&crc.to_be_bytes());
-    }
+pub struct RecordBatch<'i> {
+    base_offset: i64,
+    // batch_length: i32,
+    partition_leader_epoch: i32,
+    // Computed magic: i8, // (current magic value is 2)
+    // Computed crc: i32,
+    // bit 0~2:
+    //     0: no compression
+    //     1: gzip
+    //     2: snappy
+    //     3: lz4
+    //     4: zstd
+    // bit 3: timestampType
+    // bit 4: isTransactional (0 means not transactional)
+    // bit 5: isControlBatch (0 means not a control batch)
+    // bit 6~15: unused
+    attributes: i16,
+    last_offset_delta: i32,
+    first_timestamp: i64,
+    max_timestamp: i64,
+    producer_id: i64,
+    producer_epoch: i16,
+    base_sequence: i32,
+    records: Vec<Record<'i>>,
 }
 
 pub struct Record<'i> {
-    length: i32,          // varint
+    // Computed length: i32,          // varint
     attributes: i8,       // bit 0~7: unused
     timestamp_delta: i32, // varint
     offset_delta: i32,    // varint
@@ -306,10 +346,22 @@ pub struct RecordHeader<'i> {
 fn encode_var_bytes_space(input: &[u8]) -> usize {
     i32::try_from(input.len()).unwrap().required_space() + input.len()
 }
+
 fn encode_var_bytes(input: &[u8], writer: &mut impl Buffer) {
     let len = i32::try_from(input.len()).unwrap();
     encode_var_i32(len, writer);
     writer.put(input);
+}
+
+fn encode_var_array<T>(input: &[T], writer: &mut impl Buffer)
+where
+    T: Encode,
+{
+    let len = i32::try_from(input.len()).unwrap();
+    encode_var_i32(len, writer);
+    for t in input {
+        t.encode(writer);
+    }
 }
 
 fn encode_var_i32(input: i32, writer: &mut impl Buffer) {
@@ -318,10 +370,76 @@ fn encode_var_i32(input: i32, writer: &mut impl Buffer) {
     writer.put(&buf[..i]);
 }
 
+struct Reservation<T>(usize, std::marker::PhantomData<T>);
+
+fn reserve<T, B>(writer: &mut B) -> Reservation<T>
+where
+    T: Encode + Default,
+    B: Buffer,
+{
+    let start = writer.len();
+    T::default().encode(writer);
+    Reservation(start, std::marker::PhantomData)
+}
+
+impl<T> Reservation<T>
+where
+    T: Encode + Sized,
+{
+    fn end(&self) -> usize {
+        self.0 + mem::size_of::<T>()
+    }
+
+    fn fill(self, buf: &mut [u8], value: &[u8]) {
+        let end = self.0 + mem::size_of::<T>();
+        buf[self.0..end].copy_from_slice(value)
+    }
+}
+
+impl Encode for RecordBatch<'_> {
+    fn encode_len(&self) -> usize {
+        self.base_offset.encode_len()
+            + mem::size_of::<i32>() // self.batch_length.encode_len()
+            + self.partition_leader_epoch.encode_len()
+            + mem::size_of::<i8>() // self.magic.encode_len()
+            + mem::size_of::<i32>() // self.crc.encode_len()
+            + self.attributes.encode_len()
+            + self.last_offset_delta.encode_len()
+            + self.first_timestamp.encode_len()
+            + self.max_timestamp.encode_len()
+            + self.producer_id.encode_len()
+            + self.producer_epoch.encode_len()
+            + self.base_sequence.encode_len()
+            + self.records.encode_len()
+    }
+
+    fn encode(&self, writer: &mut impl Buffer) {
+        self.base_offset.encode(writer);
+        let batch_length_reservation = reserve::<i32, _>(writer);
+        self.partition_leader_epoch.encode(writer);
+        2i8.encode(writer); // self.magic.encode(writer);
+        let crc_reservation = reserve::<i32, _>(writer);
+        self.attributes.encode(writer);
+        self.last_offset_delta.encode(writer);
+        self.first_timestamp.encode(writer);
+        self.max_timestamp.encode(writer);
+        self.producer_id.encode(writer);
+        self.producer_epoch.encode(writer);
+        self.base_sequence.encode(writer);
+        self.records.encode(writer);
+
+        let crc = crc::crc32::checksum_castagnoli(&writer[crc_reservation.end()..]);
+        crc_reservation.fill(writer, &crc.to_be_bytes());
+
+        let batch_length = i32::try_from(writer.len() - batch_length_reservation.end()).unwrap();
+        batch_length_reservation.fill(writer, &batch_length.to_be_bytes());
+    }
+}
+
 impl Encode for Record<'_> {
     fn encode_len(&self) -> usize {
-        self.length.required_space()
-            + 1 // self.attributes
+        // self.length.required_space() TODO
+        1 // self.attributes
             + self.timestamp_delta.required_space()
             + self.offset_delta.required_space()
             + encode_var_bytes_space(self.key)
@@ -333,18 +451,15 @@ impl Encode for Record<'_> {
     }
 
     fn encode(&self, writer: &mut impl Buffer) {
-        encode_var_i32(self.length, writer);
+        let length = i32::try_from(self.encode_len()).unwrap();
+        encode_var_i32(length, writer);
         writer.put_i8(self.attributes);
         encode_var_i32(self.timestamp_delta, writer);
         encode_var_i32(self.offset_delta, writer);
         encode_var_bytes(self.key, writer);
         encode_var_bytes(self.value, writer);
 
-        let len = i32::try_from(self.headers.len()).unwrap();
-        encode_var_i32(len, writer);
-        for header in &self.headers {
-            header.encode(writer);
-        }
+        encode_var_array(&self.headers, writer);
     }
 }
 
@@ -461,19 +576,24 @@ where
 mod tests {
     use super::*;
 
-    use std::net::IpAddr;
-
-    fn port() -> u16 {
-        32768
+    fn kafka_host() -> String {
+        std::str::from_utf8(
+            &std::process::Command::new("docker")
+                .args(&["port", "kafka-protocol_kafka_1", "9094/tcp"])
+                .output()
+                .expect("kafka_host")
+                .stdout,
+        )
+        .unwrap()
+        .trim()
+        .into()
     }
 
     #[tokio::test]
     async fn api_versions() {
         let _ = env_logger::try_init();
 
-        let mut client = Client::connect((IpAddr::from([127, 0, 0, 1]), port()))
-            .await
-            .unwrap();
+        let mut client = Client::connect(kafka_host()).await.unwrap();
         let api_versions_response = client
             .api_versions(crate::parser::api_versions_request::ApiVersionsRequest {})
             .await
@@ -489,9 +609,7 @@ mod tests {
             produce_request::{Data, TopicData},
             CreateTopicsRequest, ProduceRequest,
         };
-        let mut client = Client::connect((IpAddr::from([127, 0, 0, 1]), port()))
-            .await
-            .unwrap();
+        let mut client = Client::connect(kafka_host()).await.unwrap();
 
         let create_topics_response = client
             .create_topics(CreateTopicsRequest {
@@ -508,25 +626,54 @@ mod tests {
             .await
             .unwrap();
         assert!(
-            create_topics_response.topics == vec![]
-                || (create_topics_response.topics.len() == 1
-                    && create_topics_response.topics[0].error_code
+            create_topics_response.topics.len() == 1
+                && (create_topics_response.topics[0].error_code == ErrorCode::None
+                    || create_topics_response.topics[0].error_code
                         == ErrorCode::TopicAlreadyExists),
             "{:#?}",
             create_topics_response
         );
 
+        let metadata = client
+            .metadata(crate::parser::MetadataRequest {
+                allow_auto_topic_creation: false,
+                include_topic_authorized_operations: false,
+                include_cluster_authorized_operations: false,
+                topics: vec![crate::parser::metadata_request::Topics { name: "test" }],
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(
+            metadata.topics[0].partitions[0].error_code,
+            ErrorCode::None,
+            "{:#?}",
+            metadata
+        );
+
         let mut record_set = Vec::new();
         {
-            let message = Message {
-                magic_byte: 0,
+            let message = RecordBatch {
+                base_offset: 0,
                 attributes: 0,
-                // timestamp: 0,
-                key: b"key",
-                value: b"value",
+                first_timestamp: 0,
+                max_timestamp: 0,
+                producer_id: 0,
+                producer_epoch: 0,
+                partition_leader_epoch: 0,
+                // batch_length: 1,
+                last_offset_delta: 0,
+                base_sequence: 0,
+                records: vec![Record {
+                    attributes: 0,
+                    offset_delta: 0,
+                    timestamp_delta: 0,
+                    key: b"key",
+                    value: b"value",
+                    headers: Vec::new(),
+                }],
             };
-            let record = MessageSet { offset: 0, message };
-            record.encode(&mut record_set);
+            message.encode(&mut record_set);
         }
         let produce_response = client
             .produce(ProduceRequest {
