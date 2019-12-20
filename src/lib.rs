@@ -56,6 +56,15 @@ where
         }
     })
 }
+
+fn varstring<'i, I>() -> impl Parser<I, Output = &'i str>
+where
+    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
+{
+    varbytes().and_then(|bs| str::from_utf8(bs).map_err(StreamErrorFor::<I>::other))
+}
+
 fn varbytes<'i, I>() -> impl Parser<I, Output = &'i [u8]>
 where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
@@ -549,6 +558,9 @@ where
     }
 }
 
+pub const FETCH_EARLIEST_OFFSET: i64 = -2;
+pub const FETCH_LATEST_OFFSET: i64 = -1;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -633,17 +645,8 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn produce() {
-        let _ = env_logger::try_init();
-
-        use crate::parser::{
-            produce_request::{Data, TopicData},
-            ProduceRequest,
-        };
-        let mut client = Client::connect(kafka_host()).await.unwrap();
-
-        create_test_topic(&mut client).await;
+    async fn produce_test_message(client: &mut Client<tokio::net::TcpStream>) {
+        use crate::parser::produce_request::{Data, TopicData};
 
         let mut record_set = Vec::new();
         {
@@ -692,6 +695,18 @@ mod tests {
             "Expected no errors: {:#?}",
             produce_response.responses[0].partition_responses[0],
         );
+        eprintln!("{:#?}", produce_response);
+    }
+
+    #[tokio::test]
+    async fn produce() {
+        let _ = env_logger::try_init();
+
+        let mut client = Client::connect(kafka_host()).await.unwrap();
+
+        create_test_topic(&mut client).await;
+
+        produce_test_message(&mut client).await;
     }
 
     #[tokio::test]
@@ -702,13 +717,16 @@ mod tests {
 
         create_test_topic(&mut client).await;
 
-        let offset_fetch = client
-            .offset_fetch(OffsetFetchRequest {
-                group_id: "abc",
-                topics: vec![crate::parser::offset_fetch_request::Topics {
+        let list_offsets = client
+            .list_offsets(ListOffsetsRequest {
+                replica_id: 0,
+                isolation_level: 0,
+                topics: vec![crate::parser::list_offsets_request::Topics {
                     topic: "test",
-                    partitions: vec![crate::parser::offset_fetch_request::Partitions {
+                    partitions: vec![crate::parser::list_offsets_request::Partitions {
                         partition: 0,
+                        timestamp: FETCH_EARLIEST_OFFSET,
+                        current_leader_epoch: 0,
                     }],
                 }],
             })
@@ -716,17 +734,19 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            offset_fetch.error_code,
+            list_offsets.responses[0].partition_responses[0].error_code,
             ErrorCode::None,
             "{:#?}",
-            offset_fetch
+            list_offsets
         );
-        eprintln!("{:#?}", offset_fetch);
-        let fetch_offset = offset_fetch.responses[0].partition_responses[0].offset;
+        eprintln!("{:#?}", list_offsets);
+        let fetch_offset = list_offsets.responses[0].partition_responses[0].offset;
+
+        produce_test_message(&mut client).await;
 
         let fetch = client
             .fetch(FetchRequest {
-                replica_id: 0,
+                replica_id: -1,
                 session_epoch: 0,
                 forgotten_topics_data: Vec::new(),
                 isolation_level: 0,
@@ -759,15 +779,16 @@ mod tests {
             fetch.responses[0].partition_responses[0].partition_header
         );
 
-        crate::parser::record_set()
-            .parse(
-                fetch.responses[0].partition_responses[0]
-                    .record_set
-                    .unwrap_or_default(),
-            )
-            .expect("Parse record_set");
+        let record_set_data = fetch.responses[0].partition_responses[0]
+            .record_set
+            .expect("record_set should not be empty");
+        let (record_set, rest) = crate::parser::record_set()
+            .parse(record_set_data)
+            .unwrap_or_else(|err| panic!("Parse record_set {}: {:?}", err, record_set_data));
+        assert!(rest.is_empty(), "{:#?} {:?}", record_set, rest);
     }
 
+    // Coordinator only seems to exist if `docker-compose up -d --scale kafka=2` is run
     #[tokio::test]
     async fn find_coordinator() {
         let _ = env_logger::try_init();
@@ -790,5 +811,20 @@ mod tests {
             find_coordinator
         );
         eprintln!("{:#?}", find_coordinator);
+    }
+
+    #[test]
+    fn parse_record_set() {
+        let (record_set, rest) = crate::parser::record_set()
+            .parse(
+                &[
+                    0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 64, 0, 0, 0, 0, 2, 66, 249, 85, 185, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 28, 0, 0, 0, 6, 107, 101, 121, 10, 118, 97,
+                    108, 117, 101, 0,
+                ][..],
+            )
+            .expect("Parse record_set");
+        assert!(rest.is_empty(), "{:#?} {:?}", record_set, rest);
     }
 }

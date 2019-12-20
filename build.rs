@@ -30,8 +30,8 @@ mod regenerate {
     producerId => int64
     producerEpoch => int16
     baseSequence => int32
-    records => [:Record]
-        Record => length attributes timestampDelta offsetDelta key value
+    records => [Record]
+        Record => length attributes timestampDelta offsetDelta key value Headers
             length => varint
             attributes => int8
             timestampDelta => varint
@@ -94,6 +94,7 @@ mod regenerate {
                 "be_u{}()",
                 i.trim_start_matches(char::is_alphabetic)
             )),
+            "varstring" => arena.text(format!("varstring()")),
             "varbytes" => arena.text(format!("varbytes()")),
             "varint" => arena.text(format!("varint()")),
             "BYTES" => arena.text(format!("bytes()")),
@@ -123,7 +124,7 @@ mod regenerate {
             "varint" => "i32".into(),
             "BYTES" | "varbytes" => "&'i [u8]".into(),
             "NULLABLE_BYTES" => "Option<&'i [u8]>".into(),
-            "STRING" => "&'i str".into(),
+            "STRING" | "varstring" => "&'i str".into(),
             "NULLABLE_STRING" => "Option<&'i str>".into(),
             "BOOLEAN" => "bool".into(),
             _ if ty.starts_with("ARRAY") => format!("&'i [u8]").into(), // TODO
