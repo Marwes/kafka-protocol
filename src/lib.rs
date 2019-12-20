@@ -21,6 +21,7 @@ pub mod api_key;
 pub mod client;
 pub mod error;
 pub mod parser;
+pub mod producer;
 
 fn be_i8<'i, I>() -> impl Parser<I, Output = i8>
 where
