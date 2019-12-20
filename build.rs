@@ -103,7 +103,7 @@ mod regenerate {
             "NULLABLE_STRING" => arena.text(format!("nullable_string()")),
             "BOOLEAN" => arena.text(format!("any().map(|b| b != 0)")),
             _ if i.starts_with("ARRAY") => arena.text(format!("bytes()")), // TODO
-            "RECORDS" => arena.text(format!("nullable_bytes()")),          // TODO
+            "RECORDS" => arena.text(format!("record_batch()")),            // TODO
             _ => return None,
         })
     }
@@ -128,7 +128,7 @@ mod regenerate {
             "NULLABLE_STRING" => "Option<&'i str>".into(),
             "BOOLEAN" => "bool".into(),
             _ if ty.starts_with("ARRAY") => format!("&'i [u8]").into(), // TODO
-            "RECORDS" => "Option<&'i [u8]>".into(),                     // TODO
+            "RECORDS" => "Option<RecordBatch<'i>>".into(),              // TODO
             _ => return None,
         })
     }

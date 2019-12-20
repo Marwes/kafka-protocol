@@ -8,7 +8,7 @@ use crate::{
         produce_request::{Data, TopicData},
         ProduceRequest, ProduceResponse,
     },
-    Encode, Record, RecordBatch,
+    Record, RecordBatch,
 };
 
 pub struct Input<'i, R> {
@@ -45,32 +45,28 @@ where
         R: IntoIterator<Item = RecordInput<'r>>,
     {
         let Input { topic, records } = input;
-        let mut record_set = Vec::new();
-        {
-            let message = RecordBatch {
-                base_offset: 0,
-                attributes: 0,
-                first_timestamp: 0,
-                max_timestamp: 0,
-                producer_id: 0,
-                producer_epoch: 0,
-                partition_leader_epoch: 0,
-                last_offset_delta: 0,
-                base_sequence: 0,
-                records: records
-                    .into_iter()
-                    .map(|RecordInput { key, value }| Record {
-                        attributes: 0,
-                        offset_delta: 0,
-                        timestamp_delta: 0,
-                        key,
-                        value,
-                        headers: Vec::new(),
-                    })
-                    .collect(),
-            };
-            message.encode(&mut record_set);
-        }
+        let record_set = RecordBatch {
+            base_offset: 0,
+            attributes: 0,
+            first_timestamp: 0,
+            max_timestamp: 0,
+            producer_id: 0,
+            producer_epoch: 0,
+            partition_leader_epoch: 0,
+            last_offset_delta: 0,
+            base_sequence: 0,
+            records: records
+                .into_iter()
+                .map(|RecordInput { key, value }| Record {
+                    attributes: 0,
+                    offset_delta: 0,
+                    timestamp_delta: 0,
+                    key,
+                    value,
+                    headers: Vec::new(),
+                })
+                .collect(),
+        };
         let produce_response = self
             .client
             .produce(ProduceRequest {
@@ -81,7 +77,7 @@ where
                     topic,
                     data: vec![Data {
                         partition: 0,
-                        record_set: Some(&record_set),
+                        record_set: Some(record_set),
                     }],
                 }],
             })

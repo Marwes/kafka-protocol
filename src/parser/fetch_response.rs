@@ -55,7 +55,7 @@ where
                                     }
                                 },
                             ),
-                        nullable_bytes(),
+                        record_batch(),
                     )
                         .map(|(partition_header, record_set)| {
                             PartitionResponses {
@@ -157,7 +157,7 @@ impl crate::Encode for PartitionHeader {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartitionResponses<'i> {
     pub partition_header: PartitionHeader,
-    pub record_set: Option<&'i [u8]>,
+    pub record_set: Option<RecordBatch<'i>>,
 }
 
 impl<'i> crate::Encode for PartitionResponses<'i> {

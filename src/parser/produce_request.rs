@@ -12,7 +12,7 @@ where
             (
                 string(),
                 array(|| {
-                    (be_i32(), nullable_bytes()).map(|(partition, record_set)| Data {
+                    (be_i32(), record_batch()).map(|(partition, record_set)| Data {
                         partition,
                         record_set,
                     })
@@ -59,7 +59,7 @@ pub const VERSION: i16 = 7;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Data<'i> {
     pub partition: i32,
-    pub record_set: Option<&'i [u8]>,
+    pub record_set: Option<RecordBatch<'i>>,
 }
 
 impl<'i> crate::Encode for Data<'i> {

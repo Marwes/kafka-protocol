@@ -2,11 +2,11 @@ use std::{convert::TryFrom, io, mem};
 
 use {
     bytes::Buf,
-    combine::Parser,
+    combine::{EasyParser, Parser},
     tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
 };
 
-use crate::{api_key::ApiKey, Encode, ErrorCode};
+use crate::{api_key::ApiKey, Encode};
 
 pub struct Client<I> {
     io: I,
@@ -37,7 +37,7 @@ where
     ) -> io::Result<O>
     where
         R: Encode,
-        P: Parser<&'i [u8], Output = O>,
+        P: EasyParser<&'i [u8], Output = O>,
     {
         use crate::parser::request_header::RequestHeader;
 
@@ -68,7 +68,10 @@ where
         log::trace!("Reading len");
         while self.buf.len() < mem::size_of::<i32>() {
             if self.io.read_buf(&mut self.buf).await? == 0 {
-                return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "Unable to read enough bytes for response length",
+                ));
             }
         }
 
@@ -80,7 +83,10 @@ where
 
         while self.buf.len() < response_len + mem::size_of::<i32>() {
             if self.io.read_buf(&mut self.buf).await? == 0 {
-                return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "Unable to read enough bytes for response",
+                ));
             }
         }
 
@@ -88,7 +94,7 @@ where
             .parse(&self.buf[mem::size_of::<i32>()..])
             .expect("Invalid header");
         log::trace!("Response rest: {}", rest.len());
-        let (response, rest) = parser.parse(rest).expect("Invalid response");
+        let (response, rest) = parser.easy_parse(rest).expect("Invalid response");
         assert!(
             rest.is_empty(),
             "{} bytes remaining in response: {:?}",
@@ -104,9 +110,9 @@ where
 mod tests {
     use super::*;
 
-    use std::time::Duration;
+    use std::{str, time::Duration};
 
-    use crate::{parser::*, Record, RecordBatch, FETCH_EARLIEST_OFFSET};
+    use crate::{parser::*, ErrorCode, Record, RecordBatch, FETCH_EARLIEST_OFFSET};
 
     fn kafka_host() -> String {
         std::str::from_utf8(
@@ -187,30 +193,26 @@ mod tests {
     async fn produce_test_message(client: &mut Client<tokio::net::TcpStream>) {
         use crate::parser::produce_request::{Data, TopicData};
 
-        let mut record_set = Vec::new();
-        {
-            let message = RecordBatch {
-                base_offset: 0,
+        let record_set = RecordBatch {
+            base_offset: 0,
+            attributes: 0,
+            first_timestamp: 0,
+            max_timestamp: 0,
+            producer_id: 0,
+            producer_epoch: 0,
+            partition_leader_epoch: 0,
+            // batch_length: 1,
+            last_offset_delta: 0,
+            base_sequence: 0,
+            records: vec![Record {
                 attributes: 0,
-                first_timestamp: 0,
-                max_timestamp: 0,
-                producer_id: 0,
-                producer_epoch: 0,
-                partition_leader_epoch: 0,
-                // batch_length: 1,
-                last_offset_delta: 0,
-                base_sequence: 0,
-                records: vec![Record {
-                    attributes: 0,
-                    offset_delta: 0,
-                    timestamp_delta: 0,
-                    key: b"key",
-                    value: b"value",
-                    headers: Vec::new(),
-                }],
-            };
-            message.encode(&mut record_set);
-        }
+                offset_delta: 0,
+                timestamp_delta: 0,
+                key: b"key",
+                value: b"value",
+                headers: Vec::new(),
+            }],
+        };
         let produce_response = client
             .produce(ProduceRequest {
                 acks: 1,
@@ -220,7 +222,7 @@ mod tests {
                     topic: "test",
                     data: vec![Data {
                         partition: 0,
-                        record_set: Some(&record_set),
+                        record_set: Some(record_set),
                     }],
                 }],
             })
@@ -318,13 +320,18 @@ mod tests {
             fetch.responses[0].partition_responses[0].partition_header
         );
 
-        let record_set_data = fetch.responses[0].partition_responses[0]
+        let record_set = fetch.responses[0].partition_responses[0]
             .record_set
+            .as_ref()
             .expect("record_set should not be empty");
-        let (record_set, rest) = crate::parser::record_set()
-            .parse(record_set_data)
-            .unwrap_or_else(|err| panic!("Parse record_set {}: {:?}", err, record_set_data));
-        assert!(rest.is_empty(), "{:#?} {:?}", record_set, rest);
+
+        assert_eq!(str::from_utf8(record_set.records[0].key).unwrap(), "key");
+        assert_eq!(
+            str::from_utf8(record_set.records[0].value).unwrap(),
+            "value"
+        );
+
+        eprintln!("{:#?}", record_set);
     }
 
     // Coordinator only seems to exist if `docker-compose up -d --scale kafka=2` is run

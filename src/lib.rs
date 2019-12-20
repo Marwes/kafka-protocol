@@ -2,14 +2,14 @@ use std::{convert::TryFrom, io, mem, str};
 
 use {
     combine::{
-        error::StreamError,
+        error::{ParseError, StreamError},
         parser::{
             byte::num::{be_i16, be_i32, be_i64},
             range,
-            token::{any, value},
+            token::{any, position, value},
         },
         stream::StreamErrorFor,
-        ParseError, Parser, RangeStream,
+        Parser, RangeStream,
     },
     integer_encoding::VarInt,
     tokio::io::{AsyncRead, AsyncWrite},
@@ -206,6 +206,39 @@ where
     }
 }
 
+impl Encode for Option<RecordBatch<'_>> {
+    fn encode_len(&self) -> usize {
+        match self {
+            Some(t) => 0i32.encode_len() + t.encode_len(),
+            None => (-1i32).encode_len(),
+        }
+    }
+
+    fn encode(&self, writer: &mut impl Buffer) {
+        match self {
+            Some(t) => {
+                debug_assert!(
+                    t.encode_len() == {
+                        let mut v = Vec::new();
+                        t.encode(&mut v);
+                        v.len()
+                    },
+                    "{} != {}",
+                    t.encode_len(),
+                    {
+                        let mut v = Vec::new();
+                        t.encode(&mut v);
+                        v.len()
+                    }
+                );
+                i32::try_from(t.encode_len()).unwrap().encode(writer);
+                t.encode(writer)
+            }
+            None => (-1i32).encode(writer),
+        }
+    }
+}
+
 impl Encode for Option<&'_ [u8]> {
     fn encode_len(&self) -> usize {
         match self {
@@ -292,6 +325,7 @@ impl Encode for ApiKey {
     }
 }
 
+#[derive(Clone, PartialEq, Debug)]
 pub struct RecordBatch<'i> {
     base_offset: i64,
     // batch_length: i32,
@@ -318,6 +352,7 @@ pub struct RecordBatch<'i> {
     records: Vec<Record<'i>>,
 }
 
+#[derive(Clone, PartialEq, Debug)]
 pub struct Record<'i> {
     // Computed length: i32,          // varint
     attributes: i8,       // bit 0~7: unused
@@ -328,9 +363,119 @@ pub struct Record<'i> {
     headers: Vec<RecordHeader<'i>>,
 }
 
+#[derive(Clone, PartialEq, Debug)]
 pub struct RecordHeader<'i> {
     key: &'i str,
     value: &'i [u8],
+}
+
+impl<'i> RecordBatch<'i> {
+    fn verify<I>(
+        range: &[u8],
+        record_set: crate::parser::RecordSet<'i>,
+    ) -> Result<Self, StreamErrorFor<I>>
+    where
+        I: RangeStream,
+    {
+        let crate::parser::RecordSet {
+            base_offset,
+            batch_length,
+            partition_leader_epoch,
+            magic,
+            crc,
+            attributes,
+            last_offset_delta,
+            first_timestamp,
+            max_timestamp,
+            producer_id,
+            producer_epoch,
+            base_sequence,
+            records,
+        } = record_set;
+        if magic != 2 {
+            return Err(StreamErrorFor::<I>::message_static_message(
+                "Record batch version 2",
+            ));
+        }
+        let crc_range = &range[mem::size_of_val(&base_offset)
+            + mem::size_of_val(&batch_length)
+            + mem::size_of_val(&partition_leader_epoch)
+            + mem::size_of_val(&magic)
+            + mem::size_of_val(&crc)..];
+        if crc != crc::crc32::checksum_castagnoli(crc_range) as i32 {
+            return Err(StreamErrorFor::<I>::message_static_message(
+                "Corrupted message",
+            ));
+        }
+        Ok(RecordBatch {
+            base_offset,
+            partition_leader_epoch,
+            attributes,
+            last_offset_delta,
+            first_timestamp,
+            max_timestamp,
+            producer_id,
+            producer_epoch,
+            base_sequence,
+            records: records
+                .record
+                .into_iter()
+                .map(|r| {
+                    let crate::parser::record_set::Record {
+                        length: _,
+                        attributes,
+                        timestamp_delta,
+                        offset_delta,
+                        key,
+                        value,
+                        headers,
+                    } = r;
+                    Record {
+                        attributes,
+                        timestamp_delta,
+                        offset_delta,
+                        key,
+                        value,
+                        headers: headers
+                            .header
+                            .into_iter()
+                            .map(|header| RecordHeader {
+                                key: header.header_key,
+                                value: header.value,
+                            })
+                            .collect(),
+                    }
+                })
+                .collect(),
+        })
+    }
+}
+
+fn record_batch<'i, I>() -> impl Parser<I, Output = Option<RecordBatch<'i>>>
+where
+    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
+{
+    (position(), nullable_bytes())
+        .flat_map(|(position, bytes)| match bytes {
+            Some(bytes) => {
+                let (value, rest) = crate::parser::record_set().parse(bytes).map_err(|_| {
+                    I::Error::from_error(
+                        position,
+                        StreamErrorFor::<I>::message_static_message("Unable to parse RecordSet"),
+                    )
+                })?;
+                debug_assert!(rest.is_empty(), "{:#?} {:?}", value, rest);
+                log::trace!("Parsed record_set: {:#?}", value);
+
+                Ok(Some((bytes, value)))
+            }
+            None => Ok(None),
+        })
+        .and_then(|opt| match opt {
+            Some((range, record_set)) => RecordBatch::verify::<I>(range, record_set).map(Some),
+            None => Ok(None),
+        })
 }
 
 fn encode_var_bytes_space(input: &[u8]) -> usize {
@@ -391,7 +536,7 @@ impl Encode for RecordBatch<'_> {
         self.base_offset.encode_len()
             + mem::size_of::<i32>() // self.batch_length.encode_len()
             + self.partition_leader_epoch.encode_len()
-            + mem::size_of::<i8>() // self.magic.encode_len()
+            + mem::size_of::<i16>() // self.magic.encode_len()
             + mem::size_of::<i32>() // self.crc.encode_len()
             + self.attributes.encode_len()
             + self.last_offset_delta.encode_len()
