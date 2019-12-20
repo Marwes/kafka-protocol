@@ -231,7 +231,7 @@ where
 {
     pub async fn add_offsets_to_txn<'i>(
         &'i mut self,
-        request: AddOffsetsToTxnRequest<'i>,
+        request: AddOffsetsToTxnRequest<'_>,
     ) -> io::Result<AddOffsetsToTxnResponse> {
         self.call(
             request,
@@ -243,7 +243,7 @@ where
     }
     pub async fn add_partitions_to_txn<'i>(
         &'i mut self,
-        request: AddPartitionsToTxnRequest<'i>,
+        request: AddPartitionsToTxnRequest<'_>,
     ) -> io::Result<AddPartitionsToTxnResponse<'i>> {
         self.call(
             request,
@@ -255,7 +255,7 @@ where
     }
     pub async fn alter_configs<'i>(
         &'i mut self,
-        request: AlterConfigsRequest<'i>,
+        request: AlterConfigsRequest<'_>,
     ) -> io::Result<AlterConfigsResponse<'i>> {
         self.call(
             request,
@@ -267,7 +267,7 @@ where
     }
     pub async fn alter_replica_log_dirs<'i>(
         &'i mut self,
-        request: AlterReplicaLogDirsRequest<'i>,
+        request: AlterReplicaLogDirsRequest<'_>,
     ) -> io::Result<AlterReplicaLogDirsResponse<'i>> {
         self.call(
             request,
@@ -303,7 +303,7 @@ where
     }
     pub async fn create_acls<'i>(
         &'i mut self,
-        request: CreateAclsRequest<'i>,
+        request: CreateAclsRequest<'_>,
     ) -> io::Result<CreateAclsResponse<'i>> {
         self.call(
             request,
@@ -315,7 +315,7 @@ where
     }
     pub async fn create_delegation_token<'i>(
         &'i mut self,
-        request: CreateDelegationTokenRequest<'i>,
+        request: CreateDelegationTokenRequest<'_>,
     ) -> io::Result<CreateDelegationTokenResponse<'i>> {
         self.call(
             request,
@@ -327,7 +327,7 @@ where
     }
     pub async fn create_partitions<'i>(
         &'i mut self,
-        request: CreatePartitionsRequest<'i>,
+        request: CreatePartitionsRequest<'_>,
     ) -> io::Result<CreatePartitionsResponse<'i>> {
         self.call(
             request,
@@ -339,7 +339,7 @@ where
     }
     pub async fn create_topics<'i>(
         &'i mut self,
-        request: CreateTopicsRequest<'i>,
+        request: CreateTopicsRequest<'_>,
     ) -> io::Result<CreateTopicsResponse<'i>> {
         self.call(
             request,
@@ -351,7 +351,7 @@ where
     }
     pub async fn delete_acls<'i>(
         &'i mut self,
-        request: DeleteAclsRequest<'i>,
+        request: DeleteAclsRequest<'_>,
     ) -> io::Result<DeleteAclsResponse<'i>> {
         self.call(
             request,
@@ -363,7 +363,7 @@ where
     }
     pub async fn delete_groups<'i>(
         &'i mut self,
-        request: DeleteGroupsRequest<'i>,
+        request: DeleteGroupsRequest<'_>,
     ) -> io::Result<DeleteGroupsResponse<'i>> {
         self.call(
             request,
@@ -375,7 +375,7 @@ where
     }
     pub async fn delete_records<'i>(
         &'i mut self,
-        request: DeleteRecordsRequest<'i>,
+        request: DeleteRecordsRequest<'_>,
     ) -> io::Result<DeleteRecordsResponse<'i>> {
         self.call(
             request,
@@ -387,7 +387,7 @@ where
     }
     pub async fn delete_topics<'i>(
         &'i mut self,
-        request: DeleteTopicsRequest<'i>,
+        request: DeleteTopicsRequest<'_>,
     ) -> io::Result<DeleteTopicsResponse<'i>> {
         self.call(
             request,
@@ -399,7 +399,7 @@ where
     }
     pub async fn describe_acls<'i>(
         &'i mut self,
-        request: DescribeAclsRequest<'i>,
+        request: DescribeAclsRequest<'_>,
     ) -> io::Result<DescribeAclsResponse<'i>> {
         self.call(
             request,
@@ -411,7 +411,7 @@ where
     }
     pub async fn describe_configs<'i>(
         &'i mut self,
-        request: DescribeConfigsRequest<'i>,
+        request: DescribeConfigsRequest<'_>,
     ) -> io::Result<DescribeConfigsResponse<'i>> {
         self.call(
             request,
@@ -423,7 +423,7 @@ where
     }
     pub async fn describe_delegation_token<'i>(
         &'i mut self,
-        request: DescribeDelegationTokenRequest<'i>,
+        request: DescribeDelegationTokenRequest<'_>,
     ) -> io::Result<DescribeDelegationTokenResponse<'i>> {
         self.call(
             request,
@@ -435,7 +435,7 @@ where
     }
     pub async fn describe_groups<'i>(
         &'i mut self,
-        request: DescribeGroupsRequest<'i>,
+        request: DescribeGroupsRequest<'_>,
     ) -> io::Result<DescribeGroupsResponse<'i>> {
         self.call(
             request,
@@ -447,7 +447,7 @@ where
     }
     pub async fn describe_log_dirs<'i>(
         &'i mut self,
-        request: DescribeLogDirsRequest<'i>,
+        request: DescribeLogDirsRequest<'_>,
     ) -> io::Result<DescribeLogDirsResponse<'i>> {
         self.call(
             request,
@@ -459,7 +459,7 @@ where
     }
     pub async fn elect_preferred_leaders<'i>(
         &'i mut self,
-        request: ElectPreferredLeadersRequest<'i>,
+        request: ElectPreferredLeadersRequest<'_>,
     ) -> io::Result<ElectPreferredLeadersResponse<'i>> {
         self.call(
             request,
@@ -471,7 +471,7 @@ where
     }
     pub async fn end_txn<'i>(
         &'i mut self,
-        request: EndTxnRequest<'i>,
+        request: EndTxnRequest<'_>,
     ) -> io::Result<EndTxnResponse> {
         self.call(
             request,
@@ -483,7 +483,7 @@ where
     }
     pub async fn expire_delegation_token<'i>(
         &'i mut self,
-        request: ExpireDelegationTokenRequest<'i>,
+        request: ExpireDelegationTokenRequest<'_>,
     ) -> io::Result<ExpireDelegationTokenResponse> {
         self.call(
             request,
@@ -495,7 +495,7 @@ where
     }
     pub async fn fetch<'i>(
         &'i mut self,
-        request: FetchRequest<'i>,
+        request: FetchRequest<'_>,
     ) -> io::Result<FetchResponse<'i>> {
         self.call(
             request,
@@ -507,7 +507,7 @@ where
     }
     pub async fn find_coordinator<'i>(
         &'i mut self,
-        request: FindCoordinatorRequest<'i>,
+        request: FindCoordinatorRequest<'_>,
     ) -> io::Result<FindCoordinatorResponse<'i>> {
         self.call(
             request,
@@ -519,7 +519,7 @@ where
     }
     pub async fn heartbeat<'i>(
         &'i mut self,
-        request: HeartbeatRequest<'i>,
+        request: HeartbeatRequest<'_>,
     ) -> io::Result<HeartbeatResponse> {
         self.call(
             request,
@@ -531,7 +531,7 @@ where
     }
     pub async fn incremental_alter_configs<'i>(
         &'i mut self,
-        request: IncrementalAlterConfigsRequest<'i>,
+        request: IncrementalAlterConfigsRequest<'_>,
     ) -> io::Result<IncrementalAlterConfigsResponse<'i>> {
         self.call(
             request,
@@ -543,7 +543,7 @@ where
     }
     pub async fn init_producer_id<'i>(
         &'i mut self,
-        request: InitProducerIdRequest<'i>,
+        request: InitProducerIdRequest<'_>,
     ) -> io::Result<InitProducerIdResponse> {
         self.call(
             request,
@@ -555,7 +555,7 @@ where
     }
     pub async fn join_group<'i>(
         &'i mut self,
-        request: JoinGroupRequest<'i>,
+        request: JoinGroupRequest<'_>,
     ) -> io::Result<JoinGroupResponse<'i>> {
         self.call(
             request,
@@ -567,7 +567,7 @@ where
     }
     pub async fn leader_and_isr<'i>(
         &'i mut self,
-        request: LeaderAndIsrRequest<'i>,
+        request: LeaderAndIsrRequest<'_>,
     ) -> io::Result<LeaderAndIsrResponse<'i>> {
         self.call(
             request,
@@ -579,7 +579,7 @@ where
     }
     pub async fn leave_group<'i>(
         &'i mut self,
-        request: LeaveGroupRequest<'i>,
+        request: LeaveGroupRequest<'_>,
     ) -> io::Result<LeaveGroupResponse> {
         self.call(
             request,
@@ -603,7 +603,7 @@ where
     }
     pub async fn list_offsets<'i>(
         &'i mut self,
-        request: ListOffsetsRequest<'i>,
+        request: ListOffsetsRequest<'_>,
     ) -> io::Result<ListOffsetsResponse<'i>> {
         self.call(
             request,
@@ -615,7 +615,7 @@ where
     }
     pub async fn metadata<'i>(
         &'i mut self,
-        request: MetadataRequest<'i>,
+        request: MetadataRequest<'_>,
     ) -> io::Result<MetadataResponse<'i>> {
         self.call(
             request,
@@ -627,7 +627,7 @@ where
     }
     pub async fn offset_commit<'i>(
         &'i mut self,
-        request: OffsetCommitRequest<'i>,
+        request: OffsetCommitRequest<'_>,
     ) -> io::Result<OffsetCommitResponse<'i>> {
         self.call(
             request,
@@ -639,7 +639,7 @@ where
     }
     pub async fn offset_fetch<'i>(
         &'i mut self,
-        request: OffsetFetchRequest<'i>,
+        request: OffsetFetchRequest<'_>,
     ) -> io::Result<OffsetFetchResponse<'i>> {
         self.call(
             request,
@@ -651,7 +651,7 @@ where
     }
     pub async fn offset_for_leader_epoch<'i>(
         &'i mut self,
-        request: OffsetForLeaderEpochRequest<'i>,
+        request: OffsetForLeaderEpochRequest<'_>,
     ) -> io::Result<OffsetForLeaderEpochResponse<'i>> {
         self.call(
             request,
@@ -663,7 +663,7 @@ where
     }
     pub async fn produce<'i>(
         &'i mut self,
-        request: ProduceRequest<'i>,
+        request: ProduceRequest<'_>,
     ) -> io::Result<ProduceResponse<'i>> {
         self.call(
             request,
@@ -675,7 +675,7 @@ where
     }
     pub async fn renew_delegation_token<'i>(
         &'i mut self,
-        request: RenewDelegationTokenRequest<'i>,
+        request: RenewDelegationTokenRequest<'_>,
     ) -> io::Result<RenewDelegationTokenResponse> {
         self.call(
             request,
@@ -687,7 +687,7 @@ where
     }
     pub async fn sasl_authenticate<'i>(
         &'i mut self,
-        request: SaslAuthenticateRequest<'i>,
+        request: SaslAuthenticateRequest<'_>,
     ) -> io::Result<SaslAuthenticateResponse<'i>> {
         self.call(
             request,
@@ -699,7 +699,7 @@ where
     }
     pub async fn sasl_handshake<'i>(
         &'i mut self,
-        request: SaslHandshakeRequest<'i>,
+        request: SaslHandshakeRequest<'_>,
     ) -> io::Result<SaslHandshakeResponse<'i>> {
         self.call(
             request,
@@ -711,7 +711,7 @@ where
     }
     pub async fn stop_replica<'i>(
         &'i mut self,
-        request: StopReplicaRequest<'i>,
+        request: StopReplicaRequest<'_>,
     ) -> io::Result<StopReplicaResponse<'i>> {
         self.call(
             request,
@@ -723,7 +723,7 @@ where
     }
     pub async fn sync_group<'i>(
         &'i mut self,
-        request: SyncGroupRequest<'i>,
+        request: SyncGroupRequest<'_>,
     ) -> io::Result<SyncGroupResponse<'i>> {
         self.call(
             request,
@@ -735,7 +735,7 @@ where
     }
     pub async fn txn_offset_commit<'i>(
         &'i mut self,
-        request: TxnOffsetCommitRequest<'i>,
+        request: TxnOffsetCommitRequest<'_>,
     ) -> io::Result<TxnOffsetCommitResponse<'i>> {
         self.call(
             request,
@@ -747,7 +747,7 @@ where
     }
     pub async fn update_metadata<'i>(
         &'i mut self,
-        request: UpdateMetadataRequest<'i>,
+        request: UpdateMetadataRequest<'_>,
     ) -> io::Result<UpdateMetadataResponse> {
         self.call(
             request,
@@ -759,7 +759,7 @@ where
     }
     pub async fn write_txn_markers<'i>(
         &'i mut self,
-        request: WriteTxnMarkersRequest<'i>,
+        request: WriteTxnMarkersRequest<'_>,
     ) -> io::Result<WriteTxnMarkersResponse<'i>> {
         self.call(
             request,

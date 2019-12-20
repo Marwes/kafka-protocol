@@ -629,7 +629,7 @@ where
                 "pub async fn {name}<'i>(&'i mut self, request: {base_type_name}Request{request_lt}) -> io::Result<{base_type_name}Response{response_lt}> {{",
                 name = name,
                 base_type_name = base_type_name,
-                request_lt = request.lifetime(),
+                request_lt = request.lifetime().replace("'i", "'_"),
                 response_lt = response.lifetime(),
             )?;
             writeln!(parser_out, "    self.call(request, ApiKey::{base_type_name}, {name}_request::VERSION, {name}_response()).await", name = name, base_type_name = base_type_name)?;
