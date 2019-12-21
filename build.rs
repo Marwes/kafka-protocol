@@ -83,6 +83,7 @@ mod regenerate {
         match field {
             "error_code" => return Some(arena.text("be_i16().and_then(|i| ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))")),
             "api_key" => return Some(arena.text("be_i16().and_then(|i| ApiKey::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))")),
+            "acks" => return Some(arena.text("be_i16().and_then(|i| Acks::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))")),
             _ => (),
         }
         Some(match i {
@@ -112,6 +113,7 @@ mod regenerate {
         match field {
             "error_code" => return Some("ErrorCode".into()),
             "api_key" => return Some("ApiKey".into()),
+            "acks" => return Some("Acks".into()),
             _ => (),
         }
         Some(match ty {

@@ -8,7 +8,7 @@ use crate::{
         produce_request::{Data, TopicData},
         ProduceRequest, ProduceResponse,
     },
-    Record, RecordBatch,
+    Acks, Record, RecordBatch,
 };
 
 pub struct Input<'i, R> {
@@ -70,7 +70,7 @@ where
         let produce_response = self
             .client
             .produce(ProduceRequest {
-                acks: 1,
+                acks: Acks::Full,
                 timeout: 1000,
                 transactional_id: None,
                 topic_data: vec![TopicData {

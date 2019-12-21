@@ -305,24 +305,25 @@ impl Encode for bool {
     }
 }
 
-impl Encode for ErrorCode {
-    fn encode_len(&self) -> usize {
-        mem::size_of::<i16>()
-    }
+macro_rules! encode_as {
+    ($($ty: ty as $prim: ty),* $(,)?) => { $(
+        impl Encode for $ty {
+            fn encode_len(&self) -> usize {
+                mem::size_of::<$prim>()
+            }
 
-    fn encode(&self, writer: &mut impl Buffer) {
-        (*self as i16).encode(writer);
-    }
+            fn encode(&self, writer: &mut impl Buffer) {
+                (*self as $prim).encode(writer);
+            }
+        }
+
+    )* }
 }
 
-impl Encode for ApiKey {
-    fn encode_len(&self) -> usize {
-        mem::size_of::<i16>()
-    }
-
-    fn encode(&self, writer: &mut impl Buffer) {
-        (*self as i16).encode(writer);
-    }
+encode_as! {
+    ApiKey as i16,
+    ErrorCode as i16,
+    Acks as i16,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -611,3 +612,22 @@ impl Encode for RecordHeader<'_> {
 
 pub const FETCH_EARLIEST_OFFSET: i64 = -2;
 pub const FETCH_LATEST_OFFSET: i64 = -1;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Acks {
+    OnlyLeader = -1,
+    None = 0,
+    Full = 1,
+}
+
+impl TryFrom<i16> for Acks {
+    type Error = &'static str;
+    fn try_from(i: i16) -> Result<Self, Self::Error> {
+        Ok(match i {
+            -1 => Acks::OnlyLeader,
+            0 => Acks::None,
+            1 => Acks::Full,
+            _ => return Err("Invalid Acks"),
+        })
+    }
+}

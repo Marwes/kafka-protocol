@@ -112,7 +112,7 @@ mod tests {
 
     use std::{str, time::Duration};
 
-    use crate::{parser::*, ErrorCode, Record, RecordBatch, FETCH_EARLIEST_OFFSET};
+    use crate::{parser::*, Acks, ErrorCode, Record, RecordBatch, FETCH_EARLIEST_OFFSET};
 
     fn kafka_host() -> String {
         std::str::from_utf8(
@@ -215,7 +215,7 @@ mod tests {
         };
         let produce_response = client
             .produce(ProduceRequest {
-                acks: 1,
+                acks: Acks::Full,
                 timeout: 1000,
                 transactional_id: None,
                 topic_data: vec![TopicData {

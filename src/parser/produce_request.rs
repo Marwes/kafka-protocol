@@ -6,7 +6,9 @@ where
 {
     (
         nullable_string(),
-        be_i16(),
+        be_i16().and_then(|i| {
+            Acks::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+        }),
         be_i32(),
         array(|| {
             (
@@ -34,7 +36,7 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProduceRequest<'i> {
     pub transactional_id: Option<&'i str>,
-    pub acks: i16,
+    pub acks: Acks,
     pub timeout: i32,
     pub topic_data: Vec<TopicData<'i>>,
 }
