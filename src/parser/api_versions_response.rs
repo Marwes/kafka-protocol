@@ -5,24 +5,29 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i16().and_then(|i| {
-            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-        }),
+        be_i16()
+            .and_then(|i| {
+                ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+            })
+            .expected("error_code"),
         array(|| {
             (
-                be_i16().and_then(|i| {
-                    ApiKey::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-                }),
-                be_i16(),
-                be_i16(),
+                be_i16()
+                    .and_then(|i| {
+                        ApiKey::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+                    })
+                    .expected("api_key"),
+                be_i16().expected("min_version"),
+                be_i16().expected("max_version"),
             )
                 .map(|(api_key, min_version, max_version)| ApiVersions {
                     api_key,
                     min_version,
                     max_version,
                 })
+                .expected("api_versions")
         }),
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
     )
         .map(
             |(error_code, api_versions, throttle_time_ms)| ApiVersionsResponse {

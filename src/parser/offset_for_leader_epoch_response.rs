@@ -6,19 +6,21 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
                     (
-                        be_i16().and_then(|i| {
-                            ErrorCode::try_from(i)
-                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
-                        }),
-                        be_i32(),
-                        be_i32(),
-                        be_i64(),
+                        be_i16()
+                            .and_then(|i| {
+                                ErrorCode::try_from(i)
+                                    .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                            })
+                            .expected("error_code"),
+                        be_i32().expected("partition"),
+                        be_i32().expected("leader_epoch"),
+                        be_i64().expected("end_offset"),
                     )
                         .map(
                             |(error_code, partition, leader_epoch, end_offset)| Partitions {
@@ -28,9 +30,11 @@ where
                                 end_offset,
                             },
                         )
+                        .expected("partitions")
                 }),
             )
                 .map(|(topic, partitions)| Topics { topic, partitions })
+                .expected("topics")
         }),
     )
         .map(|(throttle_time_ms, topics)| OffsetForLeaderEpochResponse {

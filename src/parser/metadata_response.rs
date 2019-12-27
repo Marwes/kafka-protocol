@@ -5,38 +5,48 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
-            (be_i32(), string(), be_i32(), nullable_string()).map(|(node_id, host, port, rack)| {
-                Brokers {
+            (
+                be_i32().expected("node_id"),
+                string().expected("host"),
+                be_i32().expected("port"),
+                nullable_string().expected("rack"),
+            )
+                .map(|(node_id, host, port, rack)| Brokers {
                     node_id,
                     host,
                     port,
                     rack,
-                }
-            })
+                })
+                .expected("brokers")
         }),
-        nullable_string(),
-        be_i32(),
+        nullable_string().expected("cluster_id"),
+        be_i32().expected("controller_id"),
         array(|| {
             (
-                be_i16().and_then(|i| {
-                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-                }),
-                string(),
-                any().map(|b| b != 0),
+                be_i16()
+                    .and_then(|i| {
+                        ErrorCode::try_from(i)
+                            .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                    })
+                    .expected("error_code"),
+                string().expected("name"),
+                any().map(|b| b != 0).expected("is_internal"),
                 array(|| {
                     (
-                        be_i16().and_then(|i| {
-                            ErrorCode::try_from(i)
-                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
-                        }),
-                        be_i32(),
-                        be_i32(),
-                        be_i32(),
-                        array(|| be_i32()),
-                        array(|| be_i32()),
-                        array(|| be_i32()),
+                        be_i16()
+                            .and_then(|i| {
+                                ErrorCode::try_from(i)
+                                    .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                            })
+                            .expected("error_code"),
+                        be_i32().expected("partition_index"),
+                        be_i32().expected("leader_id"),
+                        be_i32().expected("leader_epoch"),
+                        array(|| be_i32().expected("replica_nodes")),
+                        array(|| be_i32().expected("isr_nodes")),
+                        array(|| be_i32().expected("offline_replicas")),
                     )
                         .map(
                             |(
@@ -59,8 +69,9 @@ where
                                 }
                             },
                         )
+                        .expected("partitions")
                 }),
-                be_i32(),
+                be_i32().expected("topic_authorized_operations"),
             )
                 .map(
                     |(error_code, name, is_internal, partitions, topic_authorized_operations)| {
@@ -73,8 +84,9 @@ where
                         }
                     },
                 )
+                .expected("topics")
         }),
-        be_i32(),
+        be_i32().expected("cluster_authorized_operations"),
     )
         .map(
             |(

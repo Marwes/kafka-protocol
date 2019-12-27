@@ -6,19 +6,26 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i16().and_then(|i| {
-            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-        }),
-        (string(), string()).map(|(principal_type, name)| Owner {
-            principal_type,
-            name,
-        }),
-        be_i64(),
-        be_i64(),
-        be_i64(),
-        string(),
-        bytes(),
-        be_i32(),
+        be_i16()
+            .and_then(|i| {
+                ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+            })
+            .expected("error_code"),
+        (
+            string().expected("principal_type"),
+            string().expected("name"),
+        )
+            .map(|(principal_type, name)| Owner {
+                principal_type,
+                name,
+            })
+            .expected("owner"),
+        be_i64().expected("issue_timestamp"),
+        be_i64().expected("expiry_timestamp"),
+        be_i64().expected("max_timestamp"),
+        string().expected("token_id"),
+        bytes().expected("hmac"),
+        be_i32().expected("throttle_time_ms"),
     )
         .map(
             |(

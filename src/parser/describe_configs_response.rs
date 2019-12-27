@@ -6,30 +6,39 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
             (
-                be_i16().and_then(|i| {
-                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-                }),
-                nullable_string(),
-                be_i8(),
-                string(),
+                be_i16()
+                    .and_then(|i| {
+                        ErrorCode::try_from(i)
+                            .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                    })
+                    .expected("error_code"),
+                nullable_string().expected("error_message"),
+                be_i8().expected("resource_type"),
+                string().expected("resource_name"),
                 array(|| {
                     (
-                        string(),
-                        nullable_string(),
-                        any().map(|b| b != 0),
-                        be_i8(),
-                        any().map(|b| b != 0),
+                        string().expected("config_name"),
+                        nullable_string().expected("config_value"),
+                        any().map(|b| b != 0).expected("read_only"),
+                        be_i8().expected("config_source"),
+                        any().map(|b| b != 0).expected("is_sensitive"),
                         array(|| {
-                            (string(), nullable_string(), be_i8()).map(
-                                |(config_name, config_value, config_source)| ConfigSynonyms {
-                                    config_name,
-                                    config_value,
-                                    config_source,
-                                },
+                            (
+                                string().expected("config_name"),
+                                nullable_string().expected("config_value"),
+                                be_i8().expected("config_source"),
                             )
+                                .map(
+                                    |(config_name, config_value, config_source)| ConfigSynonyms {
+                                        config_name,
+                                        config_value,
+                                        config_source,
+                                    },
+                                )
+                                .expected("config_synonyms")
                         }),
                     )
                         .map(
@@ -51,6 +60,7 @@ where
                                 }
                             },
                         )
+                        .expected("config_entries")
                 }),
             )
                 .map(
@@ -64,6 +74,7 @@ where
                         }
                     },
                 )
+                .expected("resources")
         }),
     )
         .map(|(throttle_time_ms, resources)| DescribeConfigsResponse {

@@ -6,21 +6,28 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("replica_id"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
-                    (be_i32(), be_i32(), be_i32()).map(
-                        |(partition, current_leader_epoch, leader_epoch)| Partitions {
-                            partition,
-                            current_leader_epoch,
-                            leader_epoch,
-                        },
+                    (
+                        be_i32().expected("partition"),
+                        be_i32().expected("current_leader_epoch"),
+                        be_i32().expected("leader_epoch"),
                     )
+                        .map(
+                            |(partition, current_leader_epoch, leader_epoch)| Partitions {
+                                partition,
+                                current_leader_epoch,
+                                leader_epoch,
+                            },
+                        )
+                        .expected("partitions")
                 }),
             )
                 .map(|(topic, partitions)| Topics { topic, partitions })
+                .expected("topics")
         }),
     )
         .map(|(replica_id, topics)| OffsetForLeaderEpochRequest { replica_id, topics })

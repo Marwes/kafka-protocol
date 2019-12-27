@@ -6,28 +6,32 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
                     (
-                        be_i32(),
-                        be_i16().and_then(|i| {
-                            ErrorCode::try_from(i)
-                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
-                        }),
+                        be_i32().expected("partition"),
+                        be_i16()
+                            .and_then(|i| {
+                                ErrorCode::try_from(i)
+                                    .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                            })
+                            .expected("error_code"),
                     )
                         .map(|(partition, error_code)| PartitionErrors {
                             partition,
                             error_code,
                         })
+                        .expected("partition_errors")
                 }),
             )
                 .map(|(topic, partition_errors)| Errors {
                     topic,
                     partition_errors,
                 })
+                .expected("errors")
         }),
     )
         .map(|(throttle_time_ms, errors)| AddPartitionsToTxnResponse {

@@ -5,7 +5,12 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (array(|| {
-        (string(), array(|| be_i32())).map(|(topic, partitions)| Topics { topic, partitions })
+        (
+            string().expected("topic"),
+            array(|| be_i32().expected("partitions")),
+        )
+            .map(|(topic, partitions)| Topics { topic, partitions })
+            .expected("topics")
     }),)
         .map(|(topics,)| DescribeLogDirsRequest { topics })
 }

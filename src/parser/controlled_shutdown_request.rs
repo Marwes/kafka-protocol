@@ -5,10 +5,14 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (be_i32(), be_i64()).map(|(broker_id, broker_epoch)| ControlledShutdownRequest {
-        broker_id,
-        broker_epoch,
-    })
+    (
+        be_i32().expected("broker_id"),
+        be_i64().expected("broker_epoch"),
+    )
+        .map(|(broker_id, broker_epoch)| ControlledShutdownRequest {
+            broker_id,
+            broker_epoch,
+        })
 }
 
 #[derive(Clone, Debug, PartialEq)]

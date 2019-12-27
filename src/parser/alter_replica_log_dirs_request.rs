@@ -7,13 +7,18 @@ where
 {
     (array(|| {
         (
-            string(),
+            string().expected("log_dir"),
             array(|| {
-                (string(), array(|| be_i32()))
+                (
+                    string().expected("topic"),
+                    array(|| be_i32().expected("partitions")),
+                )
                     .map(|(topic, partitions)| Topics { topic, partitions })
+                    .expected("topics")
             }),
         )
             .map(|(log_dir, topics)| LogDirs { log_dir, topics })
+            .expected("log_dirs")
     }),)
         .map(|(log_dirs,)| AlterReplicaLogDirsRequest { log_dirs })
 }

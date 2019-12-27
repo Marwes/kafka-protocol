@@ -4,12 +4,18 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (array(|| string()), any().map(|b| b != 0)).map(|(groups, include_authorized_operations)| {
-        DescribeGroupsRequest {
-            groups,
-            include_authorized_operations,
-        }
-    })
+    (
+        array(|| string().expected("groups")),
+        any()
+            .map(|b| b != 0)
+            .expected("include_authorized_operations"),
+    )
+        .map(
+            |(groups, include_authorized_operations)| DescribeGroupsRequest {
+                groups,
+                include_authorized_operations,
+            },
+        )
 }
 
 #[derive(Clone, Debug, PartialEq)]

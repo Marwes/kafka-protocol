@@ -294,7 +294,9 @@ mod regenerate {
                                     },
                                     "(||",
                                     inner.generate(i, arena),
-                                    ",",
+                                    ".expected(\"",
+                                    i,
+                                    "\"),",
                                     "),",
                                 ]
                             }
@@ -308,7 +310,9 @@ mod regenerate {
                                             write_parser(i, inner_rule.production.first().unwrap().name(), arena).unwrap_or_else(|| inner_rule.generate(i, arena)),
                                         None => write_parser(i, i, arena).unwrap_or_else(|| panic!("write_parser: {} {:#?}", i, self.inner)),
                                     },
-                                    ","
+                                    ".expected(\"",
+                                    i,
+                                    "\"),",
                                 ]
                             }
                         }

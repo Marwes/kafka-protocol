@@ -4,7 +4,8 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (string(), be_i8()).map(|(key, key_type)| FindCoordinatorRequest { key, key_type })
+    (string().expected("key"), be_i8().expected("key_type"))
+        .map(|(key, key_type)| FindCoordinatorRequest { key, key_type })
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -6,32 +6,36 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
                     (
-                        be_i32(),
-                        be_i16().and_then(|i| {
-                            ErrorCode::try_from(i)
-                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
-                        }),
-                        nullable_string(),
+                        be_i32().expected("partition_id"),
+                        be_i16()
+                            .and_then(|i| {
+                                ErrorCode::try_from(i)
+                                    .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                            })
+                            .expected("error_code"),
+                        nullable_string().expected("error_message"),
                     )
-                        .map(|(partition_id, error_code, error_message)| {
-                            PartitionResult {
+                        .map(
+                            |(partition_id, error_code, error_message)| PartitionResult {
                                 partition_id,
                                 error_code,
                                 error_message,
-                            }
-                        })
+                            },
+                        )
+                        .expected("partition_result")
                 }),
             )
                 .map(|(topic, partition_result)| ReplicaElectionResults {
                     topic,
                     partition_result,
                 })
+                .expected("replica_election_results")
         }),
     )
         .map(

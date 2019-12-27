@@ -6,15 +6,18 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
             (
-                be_i16().and_then(|i| {
-                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-                }),
-                nullable_string(),
-                be_i8(),
-                string(),
+                be_i16()
+                    .and_then(|i| {
+                        ErrorCode::try_from(i)
+                            .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                    })
+                    .expected("error_code"),
+                nullable_string().expected("error_message"),
+                be_i8().expected("resource_type"),
+                string().expected("resource_name"),
             )
                 .map(
                     |(error_code, error_message, resource_type, resource_name)| Responses {
@@ -24,6 +27,7 @@ where
                         resource_name,
                     },
                 )
+                .expected("responses")
         }),
     )
         .map(

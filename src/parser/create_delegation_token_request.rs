@@ -7,12 +7,17 @@ where
 {
     (
         array(|| {
-            (string(), string()).map(|(principal_type, name)| Renewers {
-                principal_type,
-                name,
-            })
+            (
+                string().expected("principal_type"),
+                string().expected("name"),
+            )
+                .map(|(principal_type, name)| Renewers {
+                    principal_type,
+                    name,
+                })
+                .expected("renewers")
         }),
-        be_i64(),
+        be_i64().expected("max_life_time"),
     )
         .map(|(renewers, max_life_time)| CreateDelegationTokenRequest {
             renewers,

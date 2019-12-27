@@ -5,10 +5,12 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i16().and_then(|i| {
-            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-        }),
-        array(|| string()),
+        be_i16()
+            .and_then(|i| {
+                ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+            })
+            .expected("error_code"),
+        array(|| string().expected("mechanisms")),
     )
         .map(|(error_code, mechanisms)| SaslHandshakeResponse {
             error_code,

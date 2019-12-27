@@ -4,10 +4,14 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (string(), string()).map(|(group_id, member_id)| LeaveGroupRequest {
-        group_id,
-        member_id,
-    })
+    (
+        string().expected("group_id"),
+        string().expected("member_id"),
+    )
+        .map(|(group_id, member_id)| LeaveGroupRequest {
+            group_id,
+            member_id,
+        })
 }
 
 #[derive(Clone, Debug, PartialEq)]

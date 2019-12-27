@@ -5,13 +5,18 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        string(),
+        string().expected("group_id"),
         array(|| {
             (
-                string(),
-                array(|| (be_i32(),).map(|(partition,)| Partitions { partition })),
+                string().expected("topic"),
+                array(|| {
+                    (be_i32().expected("partition"),)
+                        .map(|(partition,)| Partitions { partition })
+                        .expected("partitions")
+                }),
             )
                 .map(|(topic, partitions)| Topics { topic, partitions })
+                .expected("topics")
         }),
     )
         .map(|(group_id, topics)| OffsetFetchRequest { group_id, topics })

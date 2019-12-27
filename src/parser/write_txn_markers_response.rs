@@ -7,31 +7,36 @@ where
 {
     (array(|| {
         (
-            be_i64(),
+            be_i64().expected("producer_id"),
             array(|| {
                 (
-                    string(),
+                    string().expected("topic"),
                     array(|| {
                         (
-                            be_i32(),
-                            be_i16().and_then(|i| {
-                                ErrorCode::try_from(i)
-                                    .map_err(StreamErrorFor::<I>::unexpected_static_message)
-                            }),
+                            be_i32().expected("partition"),
+                            be_i16()
+                                .and_then(|i| {
+                                    ErrorCode::try_from(i)
+                                        .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                                })
+                                .expected("error_code"),
                         )
                             .map(|(partition, error_code)| Partitions {
                                 partition,
                                 error_code,
                             })
+                            .expected("partitions")
                     }),
                 )
                     .map(|(topic, partitions)| Topics { topic, partitions })
+                    .expected("topics")
             }),
         )
             .map(|(producer_id, topics)| TransactionMarkers {
                 producer_id,
                 topics,
             })
+            .expected("transaction_markers")
     }),)
         .map(|(transaction_markers,)| WriteTxnMarkersResponse {
             transaction_markers,

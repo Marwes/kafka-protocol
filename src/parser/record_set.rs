@@ -5,31 +5,36 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i64(),
-        be_i32(),
-        be_i32(),
-        be_i8(),
-        be_i32(),
-        be_i16(),
-        be_i32(),
-        be_i64(),
-        be_i64(),
-        be_i64(),
-        be_i16(),
-        be_i32(),
+        be_i64().expected("baseOffset"),
+        be_i32().expected("batchLength"),
+        be_i32().expected("partitionLeaderEpoch"),
+        be_i8().expected("magic"),
+        be_i32().expected("crc"),
+        be_i16().expected("attributes"),
+        be_i32().expected("lastOffsetDelta"),
+        be_i64().expected("firstTimestamp"),
+        be_i64().expected("maxTimestamp"),
+        be_i64().expected("producerId"),
+        be_i16().expected("producerEpoch"),
+        be_i32().expected("baseSequence"),
         (array(|| {
             (
-                varint(),
-                be_i8(),
-                varint(),
-                varint(),
-                varbytes(),
-                varbytes(),
+                varint().expected("length"),
+                be_i8().expected("attributes"),
+                varint().expected("timestampDelta"),
+                varint().expected("offsetDelta"),
+                varbytes().expected("key"),
+                varbytes().expected("value"),
                 (vararray(|| {
-                    (varstring(), varbytes())
+                    (
+                        varstring().expected("headerKey"),
+                        varbytes().expected("Value"),
+                    )
                         .map(|(header_key, value)| Header { header_key, value })
+                        .expected("Header")
                 }),)
-                    .map(|(header,)| Headers { header }),
+                    .map(|(header,)| Headers { header })
+                    .expected("Headers"),
             )
                 .map(
                     |(length, attributes, timestamp_delta, offset_delta, key, value, headers)| {
@@ -44,8 +49,10 @@ where
                         }
                     },
                 )
+                .expected("Record")
         }),)
-            .map(|(record,)| Records { record }),
+            .map(|(record,)| Records { record })
+            .expected("records"),
     )
         .map(
             |(

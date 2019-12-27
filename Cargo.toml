@@ -12,6 +12,7 @@ flate2 = "1"
 integer-encoding = "1"
 log = "0.4"
 tokio = { version = "0.2", features = ["tcp", "io-util",  "macros"] }
+quick-error = "1"
 
 [build-dependencies]
 combine = "4.0.0-beta.1"

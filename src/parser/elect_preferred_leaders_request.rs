@@ -7,12 +7,17 @@ where
 {
     (
         array(|| {
-            (string(), array(|| be_i32())).map(|(topic, partition_id)| TopicPartitions {
-                topic,
-                partition_id,
-            })
+            (
+                string().expected("topic"),
+                array(|| be_i32().expected("partition_id")),
+            )
+                .map(|(topic, partition_id)| TopicPartitions {
+                    topic,
+                    partition_id,
+                })
+                .expected("topic_partitions")
         }),
-        be_i32(),
+        be_i32().expected("timeout_ms"),
     )
         .map(
             |(topic_partitions, timeout_ms)| ElectPreferredLeadersRequest {

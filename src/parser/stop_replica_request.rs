@@ -5,15 +5,20 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
-        be_i32(),
-        be_i64(),
-        any().map(|b| b != 0),
+        be_i32().expected("controller_id"),
+        be_i32().expected("controller_epoch"),
+        be_i64().expected("broker_epoch"),
+        any().map(|b| b != 0).expected("delete_partitions"),
         array(|| {
-            (string(), array(|| be_i32())).map(|(topic, partition_ids)| Partitions {
-                topic,
-                partition_ids,
-            })
+            (
+                string().expected("topic"),
+                array(|| be_i32().expected("partition_ids")),
+            )
+                .map(|(topic, partition_ids)| Partitions {
+                    topic,
+                    partition_ids,
+                })
+                .expected("partitions")
         }),
     )
         .map(

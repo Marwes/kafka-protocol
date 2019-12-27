@@ -5,10 +5,18 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        array(|| (string(),).map(|(name,)| Topics { name })),
-        any().map(|b| b != 0),
-        any().map(|b| b != 0),
-        any().map(|b| b != 0),
+        array(|| {
+            (string().expected("name"),)
+                .map(|(name,)| Topics { name })
+                .expected("topics")
+        }),
+        any().map(|b| b != 0).expected("allow_auto_topic_creation"),
+        any()
+            .map(|b| b != 0)
+            .expected("include_cluster_authorized_operations"),
+        any()
+            .map(|b| b != 0)
+            .expected("include_topic_authorized_operations"),
     )
         .map(
             |(

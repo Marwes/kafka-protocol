@@ -5,15 +5,19 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
             (
-                string(),
-                be_i16().and_then(|i| {
-                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-                }),
+                string().expected("name"),
+                be_i16()
+                    .and_then(|i| {
+                        ErrorCode::try_from(i)
+                            .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                    })
+                    .expected("error_code"),
             )
                 .map(|(name, error_code)| Responses { name, error_code })
+                .expected("responses")
         }),
     )
         .map(|(throttle_time_ms, responses)| DeleteTopicsResponse {

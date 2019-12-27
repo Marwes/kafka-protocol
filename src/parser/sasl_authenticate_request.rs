@@ -5,7 +5,7 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (bytes(),).map(|(auth_bytes,)| SaslAuthenticateRequest { auth_bytes })
+    (bytes().expected("auth_bytes"),).map(|(auth_bytes,)| SaslAuthenticateRequest { auth_bytes })
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -5,18 +5,22 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
             (
-                be_i16().and_then(|i| {
-                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-                }),
-                nullable_string(),
+                be_i16()
+                    .and_then(|i| {
+                        ErrorCode::try_from(i)
+                            .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                    })
+                    .expected("error_code"),
+                nullable_string().expected("error_message"),
             )
                 .map(|(error_code, error_message)| CreationResponses {
                     error_code,
                     error_message,
                 })
+                .expected("creation_responses")
         }),
     )
         .map(

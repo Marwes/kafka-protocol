@@ -5,25 +5,31 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        string(),
-        string(),
-        be_i64(),
-        be_i16(),
+        string().expected("transactional_id"),
+        string().expected("group_id"),
+        be_i64().expected("producer_id"),
+        be_i16().expected("producer_epoch"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
-                    (be_i32(), be_i64(), be_i32(), nullable_string()).map(
-                        |(partition, offset, leader_epoch, metadata)| Partitions {
+                    (
+                        be_i32().expected("partition"),
+                        be_i64().expected("offset"),
+                        be_i32().expected("leader_epoch"),
+                        nullable_string().expected("metadata"),
+                    )
+                        .map(|(partition, offset, leader_epoch, metadata)| Partitions {
                             partition,
                             offset,
                             leader_epoch,
                             metadata,
-                        },
-                    )
+                        })
+                        .expected("partitions")
                 }),
             )
                 .map(|(topic, partitions)| Topics { topic, partitions })
+                .expected("topics")
         }),
     )
         .map(

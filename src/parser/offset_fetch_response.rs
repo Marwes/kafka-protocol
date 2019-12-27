@@ -5,42 +5,46 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
                     (
-                        be_i32(),
-                        be_i64(),
-                        be_i32(),
-                        nullable_string(),
-                        be_i16().and_then(|i| {
-                            ErrorCode::try_from(i)
-                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
-                        }),
+                        be_i32().expected("partition"),
+                        be_i64().expected("offset"),
+                        be_i32().expected("leader_epoch"),
+                        nullable_string().expected("metadata"),
+                        be_i16()
+                            .and_then(|i| {
+                                ErrorCode::try_from(i)
+                                    .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                            })
+                            .expected("error_code"),
                     )
-                        .map(
-                            |(partition, offset, leader_epoch, metadata, error_code)| {
-                                PartitionResponses {
-                                    partition,
-                                    offset,
-                                    leader_epoch,
-                                    metadata,
-                                    error_code,
-                                }
-                            },
-                        )
+                        .map(|(partition, offset, leader_epoch, metadata, error_code)| {
+                            PartitionResponses {
+                                partition,
+                                offset,
+                                leader_epoch,
+                                metadata,
+                                error_code,
+                            }
+                        })
+                        .expected("partition_responses")
                 }),
             )
                 .map(|(topic, partition_responses)| Responses {
                     topic,
                     partition_responses,
                 })
+                .expected("responses")
         }),
-        be_i16().and_then(|i| {
-            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-        }),
+        be_i16()
+            .and_then(|i| {
+                ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+            })
+            .expected("error_code"),
     )
         .map(
             |(throttle_time_ms, responses, error_code)| OffsetFetchResponse {

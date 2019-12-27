@@ -5,27 +5,32 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
             (
-                be_i16().and_then(|i| {
-                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-                }),
-                nullable_string(),
+                be_i16()
+                    .and_then(|i| {
+                        ErrorCode::try_from(i)
+                            .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                    })
+                    .expected("error_code"),
+                nullable_string().expected("error_message"),
                 array(|| {
                     (
-                        be_i16().and_then(|i| {
-                            ErrorCode::try_from(i)
-                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
-                        }),
-                        nullable_string(),
-                        be_i8(),
-                        string(),
-                        be_i8(),
-                        string(),
-                        string(),
-                        be_i8(),
-                        be_i8(),
+                        be_i16()
+                            .and_then(|i| {
+                                ErrorCode::try_from(i)
+                                    .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                            })
+                            .expected("error_code"),
+                        nullable_string().expected("error_message"),
+                        be_i8().expected("resource_type"),
+                        string().expected("resource_name"),
+                        be_i8().expected("resource_pattern_type"),
+                        string().expected("principal"),
+                        string().expected("host"),
+                        be_i8().expected("operation"),
+                        be_i8().expected("permission_type"),
                     )
                         .map(
                             |(
@@ -52,6 +57,7 @@ where
                                 }
                             },
                         )
+                        .expected("matching_acls")
                 }),
             )
                 .map(
@@ -61,6 +67,7 @@ where
                         matching_acls,
                     },
                 )
+                .expected("filter_responses")
         }),
     )
         .map(|(throttle_time_ms, filter_responses)| DeleteAclsResponse {

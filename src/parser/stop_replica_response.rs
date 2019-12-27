@@ -5,22 +5,28 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i16().and_then(|i| {
-            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-        }),
+        be_i16()
+            .and_then(|i| {
+                ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+            })
+            .expected("error_code"),
         array(|| {
             (
-                string(),
-                be_i32(),
-                be_i16().and_then(|i| {
-                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-                }),
+                string().expected("topic"),
+                be_i32().expected("partition"),
+                be_i16()
+                    .and_then(|i| {
+                        ErrorCode::try_from(i)
+                            .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                    })
+                    .expected("error_code"),
             )
                 .map(|(topic, partition, error_code)| Partitions {
                     topic,
                     partition,
                     error_code,
                 })
+                .expected("partitions")
         }),
     )
         .map(|(error_code, partitions)| StopReplicaResponse {

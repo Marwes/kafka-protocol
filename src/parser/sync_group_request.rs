@@ -5,15 +5,20 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        string(),
-        be_i32(),
-        string(),
-        nullable_string(),
+        string().expected("group_id"),
+        be_i32().expected("generation_id"),
+        string().expected("member_id"),
+        nullable_string().expected("group_instance_id"),
         array(|| {
-            (string(), bytes()).map(|(member_id, assignment)| Assignments {
-                member_id,
-                assignment,
-            })
+            (
+                string().expected("member_id"),
+                bytes().expected("assignment"),
+            )
+                .map(|(member_id, assignment)| Assignments {
+                    member_id,
+                    assignment,
+                })
+                .expected("assignments")
         }),
     )
         .map(

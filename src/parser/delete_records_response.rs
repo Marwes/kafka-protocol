@@ -5,29 +5,31 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
                     (
-                        be_i32(),
-                        be_i64(),
-                        be_i16().and_then(|i| {
-                            ErrorCode::try_from(i)
-                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
-                        }),
+                        be_i32().expected("partition"),
+                        be_i64().expected("low_watermark"),
+                        be_i16()
+                            .and_then(|i| {
+                                ErrorCode::try_from(i)
+                                    .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                            })
+                            .expected("error_code"),
                     )
-                        .map(|(partition, low_watermark, error_code)| {
-                            Partitions {
-                                partition,
-                                low_watermark,
-                                error_code,
-                            }
+                        .map(|(partition, low_watermark, error_code)| Partitions {
+                            partition,
+                            low_watermark,
+                            error_code,
                         })
+                        .expected("partitions")
                 }),
             )
                 .map(|(topic, partitions)| Topics { topic, partitions })
+                .expected("topics")
         }),
     )
         .map(|(throttle_time_ms, topics)| DeleteRecordsResponse {

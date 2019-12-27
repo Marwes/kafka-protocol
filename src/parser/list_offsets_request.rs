@@ -5,22 +5,27 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
-        be_i8(),
+        be_i32().expected("replica_id"),
+        be_i8().expected("isolation_level"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
-                    (be_i32(), be_i32(), be_i64()).map(
-                        |(partition, current_leader_epoch, timestamp)| Partitions {
+                    (
+                        be_i32().expected("partition"),
+                        be_i32().expected("current_leader_epoch"),
+                        be_i64().expected("timestamp"),
+                    )
+                        .map(|(partition, current_leader_epoch, timestamp)| Partitions {
                             partition,
                             current_leader_epoch,
                             timestamp,
-                        },
-                    )
+                        })
+                        .expected("partitions")
                 }),
             )
                 .map(|(topic, partitions)| Topics { topic, partitions })
+                .expected("topics")
         }),
     )
         .map(|(replica_id, isolation_level, topics)| ListOffsetsRequest {

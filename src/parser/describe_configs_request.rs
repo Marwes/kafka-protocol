@@ -6,15 +6,19 @@ where
 {
     (
         array(|| {
-            (be_i8(), string(), array(|| string())).map(
-                |(resource_type, resource_name, config_names)| Resources {
+            (
+                be_i8().expected("resource_type"),
+                string().expected("resource_name"),
+                array(|| string().expected("config_names")),
+            )
+                .map(|(resource_type, resource_name, config_names)| Resources {
                     resource_type,
                     resource_name,
                     config_names,
-                },
-            )
+                })
+                .expected("resources")
         }),
-        any().map(|b| b != 0),
+        any().map(|b| b != 0).expected("include_synonyms"),
     )
         .map(|(resources, include_synonyms)| DescribeConfigsRequest {
             resources,

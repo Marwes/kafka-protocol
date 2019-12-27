@@ -5,32 +5,40 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        string(),
-        be_i32(),
-        string(),
-        nullable_string(),
+        string().expected("group_id"),
+        be_i32().expected("generation_id"),
+        string().expected("member_id"),
+        nullable_string().expected("group_instance_id"),
         array(|| {
             (
-                string(),
+                string().expected("name"),
                 array(|| {
-                    (be_i32(), be_i64(), be_i32(), nullable_string()).map(
-                        |(
-                            partition_index,
-                            committed_offset,
-                            committed_leader_epoch,
-                            committed_metadata,
-                        )| {
-                            Partitions {
+                    (
+                        be_i32().expected("partition_index"),
+                        be_i64().expected("committed_offset"),
+                        be_i32().expected("committed_leader_epoch"),
+                        nullable_string().expected("committed_metadata"),
+                    )
+                        .map(
+                            |(
                                 partition_index,
                                 committed_offset,
                                 committed_leader_epoch,
                                 committed_metadata,
-                            }
-                        },
-                    )
+                            )| {
+                                Partitions {
+                                    partition_index,
+                                    committed_offset,
+                                    committed_leader_epoch,
+                                    committed_metadata,
+                                }
+                            },
+                        )
+                        .expected("partitions")
                 }),
             )
                 .map(|(name, partitions)| Topics { name, partitions })
+                .expected("topics")
         }),
     )
         .map(

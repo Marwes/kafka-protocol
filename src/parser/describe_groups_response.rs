@@ -5,36 +5,47 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
             (
-                be_i16().and_then(|i| {
-                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-                }),
-                string(),
-                string(),
-                string(),
-                string(),
+                be_i16()
+                    .and_then(|i| {
+                        ErrorCode::try_from(i)
+                            .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                    })
+                    .expected("error_code"),
+                string().expected("group_id"),
+                string().expected("group_state"),
+                string().expected("protocol_type"),
+                string().expected("protocol_data"),
                 array(|| {
-                    (string(), string(), string(), bytes(), bytes()).map(
-                        |(
-                            member_id,
-                            client_id,
-                            client_host,
-                            member_metadata,
-                            member_assignment,
-                        )| {
-                            Members {
+                    (
+                        string().expected("member_id"),
+                        string().expected("client_id"),
+                        string().expected("client_host"),
+                        bytes().expected("member_metadata"),
+                        bytes().expected("member_assignment"),
+                    )
+                        .map(
+                            |(
                                 member_id,
                                 client_id,
                                 client_host,
                                 member_metadata,
                                 member_assignment,
-                            }
-                        },
-                    )
+                            )| {
+                                Members {
+                                    member_id,
+                                    client_id,
+                                    client_host,
+                                    member_metadata,
+                                    member_assignment,
+                                }
+                            },
+                        )
+                        .expected("members")
                 }),
-                be_i32(),
+                be_i32().expected("authorized_operations"),
             )
                 .map(
                     |(
@@ -57,6 +68,7 @@ where
                         }
                     },
                 )
+                .expected("groups")
         }),
     )
         .map(|(throttle_time_ms, groups)| DescribeGroupsResponse {

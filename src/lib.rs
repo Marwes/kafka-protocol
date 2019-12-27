@@ -1,6 +1,7 @@
-use std::{convert::TryFrom, io, mem, str};
+use std::{convert::TryFrom, io, mem, str, time::Duration};
 
 use {
+    bytes::Buf,
     combine::{
         error::{ParseError, StreamError},
         parser::{
@@ -17,11 +18,30 @@ use {
 
 use {api_key::ApiKey, client::Client, error::ErrorCode};
 
+#[macro_use]
+extern crate quick_error;
+
 pub mod api_key;
 pub mod client;
 pub mod error;
 pub mod parser;
 pub mod producer;
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum Error {
+        Io(err: io::Error) {
+            display("{}", err)
+            from()
+        }
+        InvalidTimeout(dur: Duration) {
+            display("Duration to large to be converted to a millisecond timeout: {:?}", dur)
+            from()
+        }
+    }
+}
 
 fn be_i8<'i, I>() -> impl Parser<I, Output = i8>
 where
@@ -220,22 +240,10 @@ where
     fn encode(&self, writer: &mut impl Buffer) {
         match self {
             Some(t) => {
-                debug_assert!(
-                    t.encode_len() == {
-                        let mut v = Vec::new();
-                        t.encode(&mut v);
-                        v.len()
-                    },
-                    "{} != {}",
-                    t.encode_len(),
-                    {
-                        let mut v = Vec::new();
-                        t.encode(&mut v);
-                        v.len()
-                    }
-                );
-                i32::try_from(t.encode_len()).unwrap().encode(writer);
-                t.encode(writer)
+                let len_reservation = reserve::<i32, _>(writer);
+                t.encode(writer);
+
+                len_reservation.fill_len(writer);
             }
             None => (-1i32).encode(writer),
         }
@@ -464,7 +472,18 @@ where
 {
     (position(), nullable_bytes())
         .flat_map(|(position, bytes)| match bytes {
-            Some(bytes) => {
+            Some(bytes) if !bytes.is_empty() => {
+                let attributes = (&bytes[mem::size_of::<i64>()
+                    + mem::size_of::<i32>()
+                    + mem::size_of::<i32>()
+                    + mem::size_of::<i8>()
+                    + mem::size_of::<i32>()..])
+                    .get_i16();
+
+                if (attributes & (1 << 4)) != 0 {
+                    log::trace!("Control batch");
+                }
+
                 let (value, rest) = crate::parser::record_set().parse(bytes).map_err(|_| {
                     I::Error::from_error(
                         position,
@@ -476,7 +495,7 @@ where
 
                 Ok(Some((bytes, value)))
             }
-            None => Ok(None),
+            Some(_) | None => Ok(None),
         })
         .and_then(|opt| match opt {
             Some((range, record_set)) => RecordBatch::verify::<I>(range, record_set).map(Some),
@@ -531,6 +550,12 @@ where
         self.0 + mem::size_of::<T>()
     }
 
+    fn fill_len(self, buf: &mut [u8]) -> usize {
+        let length = buf.len() - self.end();
+        self.fill(buf, &i32::try_from(length).unwrap().to_be_bytes());
+        length
+    }
+
     fn fill(self, buf: &mut [u8], value: &[u8]) {
         let end = self.0 + mem::size_of::<T>();
         buf[self.0..end].copy_from_slice(value)
@@ -545,7 +570,7 @@ where
         self.base_offset.encode_len()
             + mem::size_of::<i32>() // self.batch_length.encode_len()
             + self.partition_leader_epoch.encode_len()
-            + mem::size_of::<i16>() // self.magic.encode_len()
+            + mem::size_of::<i8>() // self.magic.encode_len()
             + mem::size_of::<i32>() // self.crc.encode_len()
             + self.attributes.encode_len()
             + self.last_offset_delta.encode_len()
@@ -572,11 +597,12 @@ where
         self.base_sequence.encode(writer);
         self.records.encode(writer);
 
-        let crc = crc::crc32::checksum_castagnoli(&writer[crc_reservation.end()..]);
-        crc_reservation.fill(writer, &crc.to_be_bytes());
+        let length = batch_length_reservation.fill_len(writer);
 
-        let batch_length = i32::try_from(writer.len() - batch_length_reservation.end()).unwrap();
-        batch_length_reservation.fill(writer, &batch_length.to_be_bytes());
+        let crc_slice = &writer[crc_reservation.end()..];
+        debug_assert!(crc_slice.len() == length - 4 - 1 - 4);
+        let crc = crc::crc32::checksum_castagnoli(crc_slice);
+        crc_reservation.fill(writer, &crc.to_be_bytes());
     }
 }
 

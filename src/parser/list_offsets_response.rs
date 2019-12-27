@@ -5,38 +5,40 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
                     (
-                        be_i32(),
-                        be_i16().and_then(|i| {
-                            ErrorCode::try_from(i)
-                                .map_err(StreamErrorFor::<I>::unexpected_static_message)
-                        }),
-                        be_i64(),
-                        be_i64(),
-                        be_i32(),
+                        be_i32().expected("partition"),
+                        be_i16()
+                            .and_then(|i| {
+                                ErrorCode::try_from(i)
+                                    .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                            })
+                            .expected("error_code"),
+                        be_i64().expected("timestamp"),
+                        be_i64().expected("offset"),
+                        be_i32().expected("leader_epoch"),
                     )
-                        .map(
-                            |(partition, error_code, timestamp, offset, leader_epoch)| {
-                                PartitionResponses {
-                                    partition,
-                                    error_code,
-                                    timestamp,
-                                    offset,
-                                    leader_epoch,
-                                }
-                            },
-                        )
+                        .map(|(partition, error_code, timestamp, offset, leader_epoch)| {
+                            PartitionResponses {
+                                partition,
+                                error_code,
+                                timestamp,
+                                offset,
+                                leader_epoch,
+                            }
+                        })
+                        .expected("partition_responses")
                 }),
             )
                 .map(|(topic, partition_responses)| Responses {
                     topic,
                     partition_responses,
                 })
+                .expected("responses")
         }),
     )
         .map(|(throttle_time_ms, responses)| ListOffsetsResponse {

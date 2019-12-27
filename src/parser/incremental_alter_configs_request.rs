@@ -8,16 +8,20 @@ where
     (
         array(|| {
             (
-                be_i8(),
-                string(),
+                be_i8().expected("resource_type"),
+                string().expected("resource_name"),
                 array(|| {
-                    (string(), be_i8(), nullable_string()).map(|(name, config_operation, value)| {
-                        Configs {
+                    (
+                        string().expected("name"),
+                        be_i8().expected("config_operation"),
+                        nullable_string().expected("value"),
+                    )
+                        .map(|(name, config_operation, value)| Configs {
                             name,
                             config_operation,
                             value,
-                        }
-                    })
+                        })
+                        .expected("configs")
                 }),
             )
                 .map(|(resource_type, resource_name, configs)| Resources {
@@ -25,8 +29,9 @@ where
                     resource_name,
                     configs,
                 })
+                .expected("resources")
         }),
-        any().map(|b| b != 0),
+        any().map(|b| b != 0).expected("validate_only"),
     )
         .map(
             |(resources, validate_only)| IncrementalAlterConfigsRequest {

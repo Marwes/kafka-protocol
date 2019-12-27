@@ -4,12 +4,16 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (nullable_string(), be_i32()).map(|(transactional_id, transaction_timeout_ms)| {
-        InitProducerIdRequest {
-            transactional_id,
-            transaction_timeout_ms,
-        }
-    })
+    (
+        nullable_string().expected("transactional_id"),
+        be_i32().expected("transaction_timeout_ms"),
+    )
+        .map(
+            |(transactional_id, transaction_timeout_ms)| InitProducerIdRequest {
+                transactional_id,
+                transaction_timeout_ms,
+            },
+        )
 }
 
 #[derive(Clone, Debug, PartialEq)]

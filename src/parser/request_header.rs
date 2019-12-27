@@ -5,12 +5,14 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i16().and_then(|i| {
-            ApiKey::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-        }),
-        be_i16(),
-        be_i32(),
-        nullable_string(),
+        be_i16()
+            .and_then(|i| {
+                ApiKey::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+            })
+            .expected("api_key"),
+        be_i16().expected("api_version"),
+        be_i32().expected("correlation_id"),
+        nullable_string().expected("client_id"),
     )
         .map(
             |(api_key, api_version, correlation_id, client_id)| RequestHeader {

@@ -6,7 +6,7 @@ use {
     tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
 };
 
-use crate::{api_key::ApiKey, Encode};
+use crate::{api_key::ApiKey, reserve, Encode};
 
 pub struct Client<I> {
     io: I,
@@ -52,11 +52,11 @@ where
             };
             self.correlation_id += 1;
 
-            i32::try_from(header.encode_len() + request.encode_len())
-                .unwrap()
-                .encode(&mut self.buf);
+            let len_reservation = reserve::<i32, _>(&mut self.buf);
             header.encode(&mut self.buf);
             request.encode(&mut self.buf);
+
+            len_reservation.fill_len(&mut self.buf);
 
             self.io.write_all(&self.buf).await?;
         }
@@ -107,14 +107,14 @@ where
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     use std::{str, time::Duration};
 
     use crate::{parser::*, Acks, ErrorCode, Record, RecordBatch, FETCH_EARLIEST_OFFSET};
 
-    fn kafka_host() -> String {
+    pub fn kafka_host() -> String {
         std::str::from_utf8(
             &std::process::Command::new("docker")
                 .args(&["port", "kafka-protocol_kafka_1", "9094/tcp"])
@@ -127,7 +127,7 @@ mod tests {
         .into()
     }
 
-    async fn create_test_topic(client: &mut Client<tokio::net::TcpStream>) {
+    pub async fn create_test_topic(client: &mut Client<tokio::net::TcpStream>) {
         let create_topics_response = client
             .create_topics(crate::parser::CreateTopicsRequest {
                 timeout_ms: 1000,

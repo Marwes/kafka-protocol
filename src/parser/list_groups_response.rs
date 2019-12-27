@@ -5,15 +5,22 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
-        be_i16().and_then(|i| {
-            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-        }),
-        array(|| {
-            (string(), string()).map(|(group_id, protocol_type)| Groups {
-                group_id,
-                protocol_type,
+        be_i32().expected("throttle_time_ms"),
+        be_i16()
+            .and_then(|i| {
+                ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
             })
+            .expected("error_code"),
+        array(|| {
+            (
+                string().expected("group_id"),
+                string().expected("protocol_type"),
+            )
+                .map(|(group_id, protocol_type)| Groups {
+                    group_id,
+                    protocol_type,
+                })
+                .expected("groups")
         }),
     )
         .map(

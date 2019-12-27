@@ -4,7 +4,7 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (string(),).map(|(mechanism,)| SaslHandshakeRequest { mechanism })
+    (string().expected("mechanism"),).map(|(mechanism,)| SaslHandshakeRequest { mechanism })
 }
 
 #[derive(Clone, Debug, PartialEq)]

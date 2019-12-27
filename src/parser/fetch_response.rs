@@ -6,34 +6,41 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
-        be_i16().and_then(|i| {
-            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-        }),
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
+        be_i16()
+            .and_then(|i| {
+                ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+            })
+            .expected("error_code"),
+        be_i32().expected("session_id"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
                     (
                         (
-                            be_i32(),
-                            be_i16().and_then(|i| {
-                                ErrorCode::try_from(i)
-                                    .map_err(StreamErrorFor::<I>::unexpected_static_message)
-                            }),
-                            be_i64(),
-                            be_i64(),
-                            be_i64(),
+                            be_i32().expected("partition"),
+                            be_i16()
+                                .and_then(|i| {
+                                    ErrorCode::try_from(i)
+                                        .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                                })
+                                .expected("error_code"),
+                            be_i64().expected("high_watermark"),
+                            be_i64().expected("last_stable_offset"),
+                            be_i64().expected("log_start_offset"),
                             array(|| {
-                                (be_i64(), be_i64()).map(|(producer_id, first_offset)| {
-                                    AbortedTransactions {
+                                (
+                                    be_i64().expected("producer_id"),
+                                    be_i64().expected("first_offset"),
+                                )
+                                    .map(|(producer_id, first_offset)| AbortedTransactions {
                                         producer_id,
                                         first_offset,
-                                    }
-                                })
+                                    })
+                                    .expected("aborted_transactions")
                             }),
-                            be_i32(),
+                            be_i32().expected("preferred_read_replica"),
                         )
                             .map(
                                 |(
@@ -55,21 +62,22 @@ where
                                         preferred_read_replica,
                                     }
                                 },
-                            ),
-                        R::parser(),
+                            )
+                            .expected("partition_header"),
+                        R::parser().expected("record_set"),
                     )
-                        .map(|(partition_header, record_set)| {
-                            PartitionResponses {
-                                partition_header,
-                                record_set,
-                            }
+                        .map(|(partition_header, record_set)| PartitionResponses {
+                            partition_header,
+                            record_set,
                         })
+                        .expected("partition_responses")
                 }),
             )
                 .map(|(topic, partition_responses)| Responses {
                     topic,
                     partition_responses,
                 })
+                .expected("responses")
         }),
     )
         .map(

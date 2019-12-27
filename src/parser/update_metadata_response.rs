@@ -4,9 +4,11 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (be_i16().and_then(|i| {
-        ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-    }),)
+    (be_i16()
+        .and_then(|i| {
+            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+        })
+        .expected("error_code"),)
         .map(|(error_code,)| UpdateMetadataResponse { error_code })
 }
 

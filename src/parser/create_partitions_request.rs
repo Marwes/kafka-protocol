@@ -8,17 +8,22 @@ where
     (
         array(|| {
             (
-                string(),
-                (be_i32(), array(|| bytes()))
-                    .map(|(count, assignment)| NewPartitions { count, assignment }),
+                string().expected("topic"),
+                (
+                    be_i32().expected("count"),
+                    array(|| bytes().expected("assignment")),
+                )
+                    .map(|(count, assignment)| NewPartitions { count, assignment })
+                    .expected("new_partitions"),
             )
                 .map(|(topic, new_partitions)| TopicPartitions {
                     topic,
                     new_partitions,
                 })
+                .expected("topic_partitions")
         }),
-        be_i32(),
-        any().map(|b| b != 0),
+        be_i32().expected("timeout"),
+        any().map(|b| b != 0).expected("validate_only"),
     )
         .map(
             |(topic_partitions, timeout, validate_only)| CreatePartitionsRequest {

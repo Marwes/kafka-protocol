@@ -5,43 +5,56 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
-        be_i32(),
-        be_i32(),
-        be_i32(),
-        be_i8(),
-        be_i32(),
-        be_i32(),
+        be_i32().expected("replica_id"),
+        be_i32().expected("max_wait_time"),
+        be_i32().expected("min_bytes"),
+        be_i32().expected("max_bytes"),
+        be_i8().expected("isolation_level"),
+        be_i32().expected("session_id"),
+        be_i32().expected("session_epoch"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
-                    (be_i32(), be_i32(), be_i64(), be_i64(), be_i32()).map(
-                        |(
-                            partition,
-                            current_leader_epoch,
-                            fetch_offset,
-                            log_start_offset,
-                            partition_max_bytes,
-                        )| {
-                            Partitions {
+                    (
+                        be_i32().expected("partition"),
+                        be_i32().expected("current_leader_epoch"),
+                        be_i64().expected("fetch_offset"),
+                        be_i64().expected("log_start_offset"),
+                        be_i32().expected("partition_max_bytes"),
+                    )
+                        .map(
+                            |(
                                 partition,
                                 current_leader_epoch,
                                 fetch_offset,
                                 log_start_offset,
                                 partition_max_bytes,
-                            }
-                        },
-                    )
+                            )| {
+                                Partitions {
+                                    partition,
+                                    current_leader_epoch,
+                                    fetch_offset,
+                                    log_start_offset,
+                                    partition_max_bytes,
+                                }
+                            },
+                        )
+                        .expected("partitions")
                 }),
             )
                 .map(|(topic, partitions)| Topics { topic, partitions })
+                .expected("topics")
         }),
         array(|| {
-            (string(), array(|| be_i32()))
+            (
+                string().expected("topic"),
+                array(|| be_i32().expected("partitions")),
+            )
                 .map(|(topic, partitions)| ForgottenTopicsData { topic, partitions })
+                .expected("forgotten_topics_data")
         }),
-        string(),
+        string().expected("rack_id"),
     )
         .map(
             |(

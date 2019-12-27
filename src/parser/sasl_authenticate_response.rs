@@ -6,12 +6,14 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i16().and_then(|i| {
-            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-        }),
-        nullable_string(),
-        bytes(),
-        be_i64(),
+        be_i16()
+            .and_then(|i| {
+                ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+            })
+            .expected("error_code"),
+        nullable_string().expected("error_message"),
+        bytes().expected("auth_bytes"),
+        be_i64().expected("session_lifetime_ms"),
     )
         .map(
             |(error_code, error_message, auth_bytes, session_lifetime_ms)| {

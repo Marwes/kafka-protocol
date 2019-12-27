@@ -6,28 +6,37 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
         array(|| {
             (
-                be_i16().and_then(|i| {
-                    ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-                }),
-                string(),
+                be_i16()
+                    .and_then(|i| {
+                        ErrorCode::try_from(i)
+                            .map_err(StreamErrorFor::<I>::unexpected_static_message)
+                    })
+                    .expected("error_code"),
+                string().expected("log_dir"),
                 array(|| {
                     (
-                        string(),
+                        string().expected("topic"),
                         array(|| {
-                            (be_i32(), be_i64(), be_i64(), any().map(|b| b != 0)).map(
-                                |(partition, size, offset_lag, is_future)| Partitions {
+                            (
+                                be_i32().expected("partition"),
+                                be_i64().expected("size"),
+                                be_i64().expected("offset_lag"),
+                                any().map(|b| b != 0).expected("is_future"),
+                            )
+                                .map(|(partition, size, offset_lag, is_future)| Partitions {
                                     partition,
                                     size,
                                     offset_lag,
                                     is_future,
-                                },
-                            )
+                                })
+                                .expected("partitions")
                         }),
                     )
                         .map(|(topic, partitions)| Topics { topic, partitions })
+                        .expected("topics")
                 }),
             )
                 .map(|(error_code, log_dir, topics)| LogDirs {
@@ -35,6 +44,7 @@ where
                     log_dir,
                     topics,
                 })
+                .expected("log_dirs")
         }),
     )
         .map(|(throttle_time_ms, log_dirs)| DescribeLogDirsResponse {

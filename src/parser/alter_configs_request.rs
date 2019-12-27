@@ -7,13 +7,18 @@ where
     (
         array(|| {
             (
-                be_i8(),
-                string(),
+                be_i8().expected("resource_type"),
+                string().expected("resource_name"),
                 array(|| {
-                    (string(), nullable_string()).map(|(config_name, config_value)| ConfigEntries {
-                        config_name,
-                        config_value,
-                    })
+                    (
+                        string().expected("config_name"),
+                        nullable_string().expected("config_value"),
+                    )
+                        .map(|(config_name, config_value)| ConfigEntries {
+                            config_name,
+                            config_value,
+                        })
+                        .expected("config_entries")
                 }),
             )
                 .map(|(resource_type, resource_name, config_entries)| Resources {
@@ -21,8 +26,9 @@ where
                     resource_name,
                     config_entries,
                 })
+                .expected("resources")
         }),
-        any().map(|b| b != 0),
+        any().map(|b| b != 0).expected("validate_only"),
     )
         .map(|(resources, validate_only)| AlterConfigsRequest {
             resources,

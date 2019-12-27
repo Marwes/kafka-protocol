@@ -7,19 +7,27 @@ where
     (
         array(|| {
             (
-                string(),
-                be_i32(),
-                be_i16(),
+                string().expected("name"),
+                be_i32().expected("num_partitions"),
+                be_i16().expected("replication_factor"),
                 array(|| {
-                    (be_i32(), array(|| be_i32())).map(|(partition_index, broker_ids)| {
-                        Assignments {
+                    (
+                        be_i32().expected("partition_index"),
+                        array(|| be_i32().expected("broker_ids")),
+                    )
+                        .map(|(partition_index, broker_ids)| Assignments {
                             partition_index,
                             broker_ids,
-                        }
-                    })
+                        })
+                        .expected("assignments")
                 }),
                 array(|| {
-                    (string(), nullable_string()).map(|(name, value)| Configs { name, value })
+                    (
+                        string().expected("name"),
+                        nullable_string().expected("value"),
+                    )
+                        .map(|(name, value)| Configs { name, value })
+                        .expected("configs")
                 }),
             )
                 .map(
@@ -31,9 +39,10 @@ where
                         configs,
                     },
                 )
+                .expected("topics")
         }),
-        be_i32(),
-        any().map(|b| b != 0),
+        be_i32().expected("timeout_ms"),
+        any().map(|b| b != 0).expected("validate_only"),
     )
         .map(|(topics, timeout_ms, validate_only)| CreateTopicsRequest {
             topics,

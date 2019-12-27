@@ -4,7 +4,8 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (be_i32(),).map(|(correlation_id,)| ResponseHeader { correlation_id })
+    (be_i32().expected("correlation_id"),)
+        .map(|(correlation_id,)| ResponseHeader { correlation_id })
 }
 
 #[derive(Clone, Debug, PartialEq)]

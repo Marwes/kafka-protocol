@@ -6,22 +6,28 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        nullable_string(),
-        be_i16().and_then(|i| {
-            Acks::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-        }),
-        be_i32(),
+        nullable_string().expected("transactional_id"),
+        be_i16()
+            .and_then(|i| Acks::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))
+            .expected("acks"),
+        be_i32().expected("timeout"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
-                    (be_i32(), R::parser()).map(|(partition, record_set)| Data {
-                        partition,
-                        record_set,
-                    })
+                    (
+                        be_i32().expected("partition"),
+                        R::parser().expected("record_set"),
+                    )
+                        .map(|(partition, record_set)| Data {
+                            partition,
+                            record_set,
+                        })
+                        .expected("data")
                 }),
             )
                 .map(|(topic, data)| TopicData { topic, data })
+                .expected("topic_data")
         }),
     )
         .map(

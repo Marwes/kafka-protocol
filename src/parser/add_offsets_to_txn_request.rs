@@ -5,14 +5,20 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (string(), be_i64(), be_i16(), string()).map(
-        |(transactional_id, producer_id, producer_epoch, group_id)| AddOffsetsToTxnRequest {
-            transactional_id,
-            producer_id,
-            producer_epoch,
-            group_id,
-        },
+    (
+        string().expected("transactional_id"),
+        be_i64().expected("producer_id"),
+        be_i16().expected("producer_epoch"),
+        string().expected("group_id"),
     )
+        .map(
+            |(transactional_id, producer_id, producer_epoch, group_id)| AddOffsetsToTxnRequest {
+                transactional_id,
+                producer_id,
+                producer_epoch,
+                group_id,
+            },
+        )
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -6,14 +6,18 @@ where
 {
     (array(|| {
         (
-            be_i64(),
-            be_i16(),
-            any().map(|b| b != 0),
+            be_i64().expected("producer_id"),
+            be_i16().expected("producer_epoch"),
+            any().map(|b| b != 0).expected("transaction_result"),
             array(|| {
-                (string(), array(|| be_i32()))
+                (
+                    string().expected("topic"),
+                    array(|| be_i32().expected("partitions")),
+                )
                     .map(|(topic, partitions)| Topics { topic, partitions })
+                    .expected("topics")
             }),
-            be_i32(),
+            be_i32().expected("coordinator_epoch"),
         )
             .map(
                 |(producer_id, producer_epoch, transaction_result, topics, coordinator_epoch)| {
@@ -26,6 +30,7 @@ where
                     }
                 },
             )
+            .expected("transaction_markers")
     }),)
         .map(|(transaction_markers,)| WriteTxnMarkersRequest {
             transaction_markers,

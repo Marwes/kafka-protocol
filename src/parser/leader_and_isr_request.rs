@@ -5,22 +5,22 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
-        be_i32(),
-        be_i64(),
+        be_i32().expected("controller_id"),
+        be_i32().expected("controller_epoch"),
+        be_i64().expected("broker_epoch"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
                     (
-                        be_i32(),
-                        be_i32(),
-                        be_i32(),
-                        be_i32(),
-                        array(|| be_i32()),
-                        be_i32(),
-                        array(|| be_i32()),
-                        any().map(|b| b != 0),
+                        be_i32().expected("partition"),
+                        be_i32().expected("controller_epoch"),
+                        be_i32().expected("leader"),
+                        be_i32().expected("leader_epoch"),
+                        array(|| be_i32().expected("isr")),
+                        be_i32().expected("zk_version"),
+                        array(|| be_i32().expected("replicas")),
+                        any().map(|b| b != 0).expected("is_new"),
                     )
                         .map(
                             |(
@@ -45,15 +45,23 @@ where
                                 }
                             },
                         )
+                        .expected("partition_states")
                 }),
             )
                 .map(|(topic, partition_states)| TopicStates {
                     topic,
                     partition_states,
                 })
+                .expected("topic_states")
         }),
         array(|| {
-            (be_i32(), string(), be_i32()).map(|(id, host, port)| LiveLeaders { id, host, port })
+            (
+                be_i32().expected("id"),
+                string().expected("host"),
+                be_i32().expected("port"),
+            )
+                .map(|(id, host, port)| LiveLeaders { id, host, port })
+                .expected("live_leaders")
         }),
     )
         .map(

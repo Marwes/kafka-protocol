@@ -5,12 +5,14 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
-        be_i16().and_then(|i| {
-            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-        }),
-        be_i64(),
-        be_i16(),
+        be_i32().expected("throttle_time_ms"),
+        be_i16()
+            .and_then(|i| {
+                ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+            })
+            .expected("error_code"),
+        be_i64().expected("producer_id"),
+        be_i16().expected("producer_epoch"),
     )
         .map(
             |(throttle_time_ms, error_code, producer_id, producer_epoch)| InitProducerIdResponse {

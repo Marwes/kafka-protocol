@@ -6,11 +6,16 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        string(),
-        be_i64(),
-        be_i16(),
+        string().expected("transactional_id"),
+        be_i64().expected("producer_id"),
+        be_i16().expected("producer_epoch"),
         array(|| {
-            (string(), array(|| be_i32())).map(|(topic, partitions)| Topics { topic, partitions })
+            (
+                string().expected("topic"),
+                array(|| be_i32().expected("partitions")),
+            )
+                .map(|(topic, partitions)| Topics { topic, partitions })
+                .expected("topics")
         }),
     )
         .map(|(transactional_id, producer_id, producer_epoch, topics)| {

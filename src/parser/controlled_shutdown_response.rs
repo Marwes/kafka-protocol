@@ -6,14 +6,21 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i16().and_then(|i| {
-            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-        }),
-        array(|| {
-            (string(), be_i32()).map(|(topic_name, partition_index)| RemainingPartitions {
-                topic_name,
-                partition_index,
+        be_i16()
+            .and_then(|i| {
+                ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
             })
+            .expected("error_code"),
+        array(|| {
+            (
+                string().expected("topic_name"),
+                be_i32().expected("partition_index"),
+            )
+                .map(|(topic_name, partition_index)| RemainingPartitions {
+                    topic_name,
+                    partition_index,
+                })
+                .expected("remaining_partitions")
         }),
     )
         .map(

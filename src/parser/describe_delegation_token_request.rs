@@ -6,10 +6,15 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (array(|| {
-        (string(), string()).map(|(principal_type, name)| Owners {
-            principal_type,
-            name,
-        })
+        (
+            string().expected("principal_type"),
+            string().expected("name"),
+        )
+            .map(|(principal_type, name)| Owners {
+                principal_type,
+                name,
+            })
+            .expected("owners")
     }),)
         .map(|(owners,)| DescribeDelegationTokenRequest { owners })
 }

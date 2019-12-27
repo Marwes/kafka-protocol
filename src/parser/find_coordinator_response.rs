@@ -6,14 +6,16 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
-        be_i16().and_then(|i| {
-            ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-        }),
-        nullable_string(),
-        be_i32(),
-        string(),
-        be_i32(),
+        be_i32().expected("throttle_time_ms"),
+        be_i16()
+            .and_then(|i| {
+                ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
+            })
+            .expected("error_code"),
+        nullable_string().expected("error_message"),
+        be_i32().expected("node_id"),
+        string().expected("host"),
+        be_i32().expected("port"),
     )
         .map(
             |(throttle_time_ms, error_code, error_message, node_id, host, port)| {

@@ -5,13 +5,17 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        string(),
-        be_i32(),
-        be_i32(),
-        string(),
-        nullable_string(),
-        string(),
-        array(|| (string(), bytes()).map(|(name, metadata)| Protocols { name, metadata })),
+        string().expected("group_id"),
+        be_i32().expected("session_timeout_ms"),
+        be_i32().expected("rebalance_timeout_ms"),
+        string().expected("member_id"),
+        nullable_string().expected("group_instance_id"),
+        string().expected("protocol_type"),
+        array(|| {
+            (string().expected("name"), bytes().expected("metadata"))
+                .map(|(name, metadata)| Protocols { name, metadata })
+                .expected("protocols")
+        }),
     )
         .map(
             |(

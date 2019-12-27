@@ -6,13 +6,13 @@ where
 {
     (array(|| {
         (
-            be_i8(),
-            string(),
-            be_i8(),
-            string(),
-            string(),
-            be_i8(),
-            be_i8(),
+            be_i8().expected("resource_type"),
+            string().expected("resource_name"),
+            be_i8().expected("resource_pattern_type"),
+            string().expected("principal"),
+            string().expected("host"),
+            be_i8().expected("operation"),
+            be_i8().expected("permission_type"),
         )
             .map(
                 |(
@@ -35,6 +35,7 @@ where
                     }
                 },
             )
+            .expected("creations")
     }),)
         .map(|(creations,)| CreateAclsRequest { creations })
 }

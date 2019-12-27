@@ -5,10 +5,14 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (bytes(), be_i64()).map(|(hmac, renew_time_period)| RenewDelegationTokenRequest {
-        hmac,
-        renew_time_period,
-    })
+    (
+        bytes().expected("hmac"),
+        be_i64().expected("renew_time_period"),
+    )
+        .map(|(hmac, renew_time_period)| RenewDelegationTokenRequest {
+            hmac,
+            renew_time_period,
+        })
 }
 
 #[derive(Clone, Debug, PartialEq)]

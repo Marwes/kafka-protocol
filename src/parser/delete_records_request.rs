@@ -7,14 +7,17 @@ where
     (
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
-                    (be_i32(), be_i64()).map(|(partition, offset)| Partitions { partition, offset })
+                    (be_i32().expected("partition"), be_i64().expected("offset"))
+                        .map(|(partition, offset)| Partitions { partition, offset })
+                        .expected("partitions")
                 }),
             )
                 .map(|(topic, partitions)| Topics { topic, partitions })
+                .expected("topics")
         }),
-        be_i32(),
+        be_i32().expected("timeout"),
     )
         .map(|(topics, timeout)| DeleteRecordsRequest { topics, timeout })
 }

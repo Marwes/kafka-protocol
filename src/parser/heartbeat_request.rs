@@ -4,14 +4,20 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (string(), be_i32(), string(), nullable_string()).map(
-        |(group_id, generation_id, member_id, group_instance_id)| HeartbeatRequest {
-            group_id,
-            generation_id,
-            member_id,
-            group_instance_id,
-        },
+    (
+        string().expected("group_id"),
+        be_i32().expected("generation_id"),
+        string().expected("member_id"),
+        nullable_string().expected("group_instance_id"),
     )
+        .map(
+            |(group_id, generation_id, member_id, group_instance_id)| HeartbeatRequest {
+                group_id,
+                generation_id,
+                member_id,
+                group_instance_id,
+            },
+        )
 }
 
 #[derive(Clone, Debug, PartialEq)]

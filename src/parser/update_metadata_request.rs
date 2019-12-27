@@ -5,22 +5,22 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        be_i32(),
-        be_i32(),
-        be_i64(),
+        be_i32().expected("controller_id"),
+        be_i32().expected("controller_epoch"),
+        be_i64().expected("broker_epoch"),
         array(|| {
             (
-                string(),
+                string().expected("topic"),
                 array(|| {
                     (
-                        be_i32(),
-                        be_i32(),
-                        be_i32(),
-                        be_i32(),
-                        array(|| be_i32()),
-                        be_i32(),
-                        array(|| be_i32()),
-                        array(|| be_i32()),
+                        be_i32().expected("partition"),
+                        be_i32().expected("controller_epoch"),
+                        be_i32().expected("leader"),
+                        be_i32().expected("leader_epoch"),
+                        array(|| be_i32().expected("isr")),
+                        be_i32().expected("zk_version"),
+                        array(|| be_i32().expected("replicas")),
+                        array(|| be_i32().expected("offline_replicas")),
                     )
                         .map(
                             |(
@@ -45,33 +45,43 @@ where
                                 }
                             },
                         )
+                        .expected("partition_states")
                 }),
             )
                 .map(|(topic, partition_states)| TopicStates {
                     topic,
                     partition_states,
                 })
+                .expected("topic_states")
         }),
         array(|| {
             (
-                be_i32(),
+                be_i32().expected("id"),
                 array(|| {
-                    (be_i32(), string(), string(), be_i16()).map(
-                        |(port, host, listener_name, security_protocol_type)| EndPoints {
-                            port,
-                            host,
-                            listener_name,
-                            security_protocol_type,
-                        },
+                    (
+                        be_i32().expected("port"),
+                        string().expected("host"),
+                        string().expected("listener_name"),
+                        be_i16().expected("security_protocol_type"),
                     )
+                        .map(
+                            |(port, host, listener_name, security_protocol_type)| EndPoints {
+                                port,
+                                host,
+                                listener_name,
+                                security_protocol_type,
+                            },
+                        )
+                        .expected("end_points")
                 }),
-                nullable_string(),
+                nullable_string().expected("rack"),
             )
                 .map(|(id, end_points, rack)| LiveBrokers {
                     id,
                     end_points,
                     rack,
                 })
+                .expected("live_brokers")
         }),
     )
         .map(
