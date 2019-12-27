@@ -1,5 +1,6 @@
 use super::*;
-pub fn fetch_response<'i, I>() -> impl Parser<I, Output = FetchResponse<'i>> + 'i
+pub fn fetch_response<'i, R: RecordBatchParser<I> + 'i, I>(
+) -> impl Parser<I, Output = FetchResponse<'i, R>> + 'i
 where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
@@ -55,7 +56,7 @@ where
                                     }
                                 },
                             ),
-                        record_batch(),
+                        R::parser(),
                     )
                         .map(|(partition_header, record_set)| {
                             PartitionResponses {
@@ -82,14 +83,17 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct FetchResponse<'i> {
+pub struct FetchResponse<'i, R> {
     pub throttle_time_ms: i32,
     pub error_code: ErrorCode,
     pub session_id: i32,
-    pub responses: Vec<Responses<'i>>,
+    pub responses: Vec<Responses<'i, R>>,
 }
 
-impl<'i> crate::Encode for FetchResponse<'i> {
+impl<'i, R> crate::Encode for FetchResponse<'i, R>
+where
+    R: Encode,
+{
     fn encode_len(&self) -> usize {
         self.throttle_time_ms.encode_len()
             + self.error_code.encode_len()
@@ -155,12 +159,15 @@ impl crate::Encode for PartitionHeader {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct PartitionResponses<'i> {
+pub struct PartitionResponses<R> {
     pub partition_header: PartitionHeader,
-    pub record_set: Option<RecordBatch<'i>>,
+    pub record_set: Option<RecordBatch<R>>,
 }
 
-impl<'i> crate::Encode for PartitionResponses<'i> {
+impl<R> crate::Encode for PartitionResponses<R>
+where
+    R: Encode,
+{
     fn encode_len(&self) -> usize {
         self.partition_header.encode_len() + self.record_set.encode_len()
     }
@@ -171,12 +178,15 @@ impl<'i> crate::Encode for PartitionResponses<'i> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Responses<'i> {
+pub struct Responses<'i, R> {
     pub topic: &'i str,
-    pub partition_responses: Vec<PartitionResponses<'i>>,
+    pub partition_responses: Vec<PartitionResponses<R>>,
 }
 
-impl<'i> crate::Encode for Responses<'i> {
+impl<'i, R> crate::Encode for Responses<'i, R>
+where
+    R: Encode,
+{
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.partition_responses.encode_len()
     }

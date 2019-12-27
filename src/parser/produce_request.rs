@@ -1,5 +1,6 @@
 use super::*;
-pub fn produce_request<'i, I>() -> impl Parser<I, Output = ProduceRequest<'i>> + 'i
+pub fn produce_request<'i, R: RecordBatchParser<I> + 'i, I>(
+) -> impl Parser<I, Output = ProduceRequest<'i, R>> + 'i
 where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
@@ -14,7 +15,7 @@ where
             (
                 string(),
                 array(|| {
-                    (be_i32(), record_batch()).map(|(partition, record_set)| Data {
+                    (be_i32(), R::parser()).map(|(partition, record_set)| Data {
                         partition,
                         record_set,
                     })
@@ -34,14 +35,17 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ProduceRequest<'i> {
+pub struct ProduceRequest<'i, R> {
     pub transactional_id: Option<&'i str>,
     pub acks: Acks,
     pub timeout: i32,
-    pub topic_data: Vec<TopicData<'i>>,
+    pub topic_data: Vec<TopicData<'i, R>>,
 }
 
-impl<'i> crate::Encode for ProduceRequest<'i> {
+impl<'i, R> crate::Encode for ProduceRequest<'i, R>
+where
+    R: Encode,
+{
     fn encode_len(&self) -> usize {
         self.transactional_id.encode_len()
             + self.acks.encode_len()
@@ -59,12 +63,15 @@ impl<'i> crate::Encode for ProduceRequest<'i> {
 pub const VERSION: i16 = 7;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Data<'i> {
+pub struct Data<R> {
     pub partition: i32,
-    pub record_set: Option<RecordBatch<'i>>,
+    pub record_set: Option<RecordBatch<R>>,
 }
 
-impl<'i> crate::Encode for Data<'i> {
+impl<R> crate::Encode for Data<R>
+where
+    R: Encode,
+{
     fn encode_len(&self) -> usize {
         self.partition.encode_len() + self.record_set.encode_len()
     }
@@ -75,12 +82,15 @@ impl<'i> crate::Encode for Data<'i> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct TopicData<'i> {
+pub struct TopicData<'i, R> {
     pub topic: &'i str,
-    pub data: Vec<Data<'i>>,
+    pub data: Vec<Data<R>>,
 }
 
-impl<'i> crate::Encode for TopicData<'i> {
+impl<'i, R> crate::Encode for TopicData<'i, R>
+where
+    R: Encode,
+{
     fn encode_len(&self) -> usize {
         self.topic.encode_len() + self.data.encode_len()
     }

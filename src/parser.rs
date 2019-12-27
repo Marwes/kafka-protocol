@@ -232,7 +232,7 @@ where
     pub async fn add_offsets_to_txn<'i>(
         &'i mut self,
         request: AddOffsetsToTxnRequest<'_>,
-    ) -> io::Result<AddOffsetsToTxnResponse> {
+    ) -> io::Result<AddOffsetsToTxnResponse> where {
         self.call(
             request,
             ApiKey::AddOffsetsToTxn,
@@ -244,7 +244,7 @@ where
     pub async fn add_partitions_to_txn<'i>(
         &'i mut self,
         request: AddPartitionsToTxnRequest<'_>,
-    ) -> io::Result<AddPartitionsToTxnResponse<'i>> {
+    ) -> io::Result<AddPartitionsToTxnResponse<'i>> where {
         self.call(
             request,
             ApiKey::AddPartitionsToTxn,
@@ -256,7 +256,7 @@ where
     pub async fn alter_configs<'i>(
         &'i mut self,
         request: AlterConfigsRequest<'_>,
-    ) -> io::Result<AlterConfigsResponse<'i>> {
+    ) -> io::Result<AlterConfigsResponse<'i>> where {
         self.call(
             request,
             ApiKey::AlterConfigs,
@@ -268,7 +268,7 @@ where
     pub async fn alter_replica_log_dirs<'i>(
         &'i mut self,
         request: AlterReplicaLogDirsRequest<'_>,
-    ) -> io::Result<AlterReplicaLogDirsResponse<'i>> {
+    ) -> io::Result<AlterReplicaLogDirsResponse<'i>> where {
         self.call(
             request,
             ApiKey::AlterReplicaLogDirs,
@@ -280,7 +280,7 @@ where
     pub async fn api_versions<'i>(
         &'i mut self,
         request: ApiVersionsRequest,
-    ) -> io::Result<ApiVersionsResponse> {
+    ) -> io::Result<ApiVersionsResponse> where {
         self.call(
             request,
             ApiKey::ApiVersions,
@@ -292,7 +292,7 @@ where
     pub async fn controlled_shutdown<'i>(
         &'i mut self,
         request: ControlledShutdownRequest,
-    ) -> io::Result<ControlledShutdownResponse<'i>> {
+    ) -> io::Result<ControlledShutdownResponse<'i>> where {
         self.call(
             request,
             ApiKey::ControlledShutdown,
@@ -304,7 +304,7 @@ where
     pub async fn create_acls<'i>(
         &'i mut self,
         request: CreateAclsRequest<'_>,
-    ) -> io::Result<CreateAclsResponse<'i>> {
+    ) -> io::Result<CreateAclsResponse<'i>> where {
         self.call(
             request,
             ApiKey::CreateAcls,
@@ -316,7 +316,7 @@ where
     pub async fn create_delegation_token<'i>(
         &'i mut self,
         request: CreateDelegationTokenRequest<'_>,
-    ) -> io::Result<CreateDelegationTokenResponse<'i>> {
+    ) -> io::Result<CreateDelegationTokenResponse<'i>> where {
         self.call(
             request,
             ApiKey::CreateDelegationToken,
@@ -328,7 +328,7 @@ where
     pub async fn create_partitions<'i>(
         &'i mut self,
         request: CreatePartitionsRequest<'_>,
-    ) -> io::Result<CreatePartitionsResponse<'i>> {
+    ) -> io::Result<CreatePartitionsResponse<'i>> where {
         self.call(
             request,
             ApiKey::CreatePartitions,
@@ -340,7 +340,7 @@ where
     pub async fn create_topics<'i>(
         &'i mut self,
         request: CreateTopicsRequest<'_>,
-    ) -> io::Result<CreateTopicsResponse<'i>> {
+    ) -> io::Result<CreateTopicsResponse<'i>> where {
         self.call(
             request,
             ApiKey::CreateTopics,
@@ -352,7 +352,7 @@ where
     pub async fn delete_acls<'i>(
         &'i mut self,
         request: DeleteAclsRequest<'_>,
-    ) -> io::Result<DeleteAclsResponse<'i>> {
+    ) -> io::Result<DeleteAclsResponse<'i>> where {
         self.call(
             request,
             ApiKey::DeleteAcls,
@@ -364,7 +364,7 @@ where
     pub async fn delete_groups<'i>(
         &'i mut self,
         request: DeleteGroupsRequest<'_>,
-    ) -> io::Result<DeleteGroupsResponse<'i>> {
+    ) -> io::Result<DeleteGroupsResponse<'i>> where {
         self.call(
             request,
             ApiKey::DeleteGroups,
@@ -376,7 +376,7 @@ where
     pub async fn delete_records<'i>(
         &'i mut self,
         request: DeleteRecordsRequest<'_>,
-    ) -> io::Result<DeleteRecordsResponse<'i>> {
+    ) -> io::Result<DeleteRecordsResponse<'i>> where {
         self.call(
             request,
             ApiKey::DeleteRecords,
@@ -388,7 +388,7 @@ where
     pub async fn delete_topics<'i>(
         &'i mut self,
         request: DeleteTopicsRequest<'_>,
-    ) -> io::Result<DeleteTopicsResponse<'i>> {
+    ) -> io::Result<DeleteTopicsResponse<'i>> where {
         self.call(
             request,
             ApiKey::DeleteTopics,
@@ -400,7 +400,7 @@ where
     pub async fn describe_acls<'i>(
         &'i mut self,
         request: DescribeAclsRequest<'_>,
-    ) -> io::Result<DescribeAclsResponse<'i>> {
+    ) -> io::Result<DescribeAclsResponse<'i>> where {
         self.call(
             request,
             ApiKey::DescribeAcls,
@@ -412,7 +412,7 @@ where
     pub async fn describe_configs<'i>(
         &'i mut self,
         request: DescribeConfigsRequest<'_>,
-    ) -> io::Result<DescribeConfigsResponse<'i>> {
+    ) -> io::Result<DescribeConfigsResponse<'i>> where {
         self.call(
             request,
             ApiKey::DescribeConfigs,
@@ -424,7 +424,7 @@ where
     pub async fn describe_delegation_token<'i>(
         &'i mut self,
         request: DescribeDelegationTokenRequest<'_>,
-    ) -> io::Result<DescribeDelegationTokenResponse<'i>> {
+    ) -> io::Result<DescribeDelegationTokenResponse<'i>> where {
         self.call(
             request,
             ApiKey::DescribeDelegationToken,
@@ -436,7 +436,7 @@ where
     pub async fn describe_groups<'i>(
         &'i mut self,
         request: DescribeGroupsRequest<'_>,
-    ) -> io::Result<DescribeGroupsResponse<'i>> {
+    ) -> io::Result<DescribeGroupsResponse<'i>> where {
         self.call(
             request,
             ApiKey::DescribeGroups,
@@ -448,7 +448,7 @@ where
     pub async fn describe_log_dirs<'i>(
         &'i mut self,
         request: DescribeLogDirsRequest<'_>,
-    ) -> io::Result<DescribeLogDirsResponse<'i>> {
+    ) -> io::Result<DescribeLogDirsResponse<'i>> where {
         self.call(
             request,
             ApiKey::DescribeLogDirs,
@@ -460,7 +460,7 @@ where
     pub async fn elect_preferred_leaders<'i>(
         &'i mut self,
         request: ElectPreferredLeadersRequest<'_>,
-    ) -> io::Result<ElectPreferredLeadersResponse<'i>> {
+    ) -> io::Result<ElectPreferredLeadersResponse<'i>> where {
         self.call(
             request,
             ApiKey::ElectPreferredLeaders,
@@ -472,7 +472,7 @@ where
     pub async fn end_txn<'i>(
         &'i mut self,
         request: EndTxnRequest<'_>,
-    ) -> io::Result<EndTxnResponse> {
+    ) -> io::Result<EndTxnResponse> where {
         self.call(
             request,
             ApiKey::EndTxn,
@@ -484,7 +484,7 @@ where
     pub async fn expire_delegation_token<'i>(
         &'i mut self,
         request: ExpireDelegationTokenRequest<'_>,
-    ) -> io::Result<ExpireDelegationTokenResponse> {
+    ) -> io::Result<ExpireDelegationTokenResponse> where {
         self.call(
             request,
             ApiKey::ExpireDelegationToken,
@@ -493,10 +493,13 @@ where
         )
         .await
     }
-    pub async fn fetch<'i>(
+    pub async fn fetch<'i, R>(
         &'i mut self,
         request: FetchRequest<'_>,
-    ) -> io::Result<FetchResponse<'i>> {
+    ) -> io::Result<FetchResponse<'i, R>>
+    where
+        R: RecordBatchParser<combine::stream::easy::Stream<&'i [u8]>> + 'i,
+    {
         self.call(
             request,
             ApiKey::Fetch,
@@ -508,7 +511,7 @@ where
     pub async fn find_coordinator<'i>(
         &'i mut self,
         request: FindCoordinatorRequest<'_>,
-    ) -> io::Result<FindCoordinatorResponse<'i>> {
+    ) -> io::Result<FindCoordinatorResponse<'i>> where {
         self.call(
             request,
             ApiKey::FindCoordinator,
@@ -520,7 +523,7 @@ where
     pub async fn heartbeat<'i>(
         &'i mut self,
         request: HeartbeatRequest<'_>,
-    ) -> io::Result<HeartbeatResponse> {
+    ) -> io::Result<HeartbeatResponse> where {
         self.call(
             request,
             ApiKey::Heartbeat,
@@ -532,7 +535,7 @@ where
     pub async fn incremental_alter_configs<'i>(
         &'i mut self,
         request: IncrementalAlterConfigsRequest<'_>,
-    ) -> io::Result<IncrementalAlterConfigsResponse<'i>> {
+    ) -> io::Result<IncrementalAlterConfigsResponse<'i>> where {
         self.call(
             request,
             ApiKey::IncrementalAlterConfigs,
@@ -544,7 +547,7 @@ where
     pub async fn init_producer_id<'i>(
         &'i mut self,
         request: InitProducerIdRequest<'_>,
-    ) -> io::Result<InitProducerIdResponse> {
+    ) -> io::Result<InitProducerIdResponse> where {
         self.call(
             request,
             ApiKey::InitProducerId,
@@ -556,7 +559,7 @@ where
     pub async fn join_group<'i>(
         &'i mut self,
         request: JoinGroupRequest<'_>,
-    ) -> io::Result<JoinGroupResponse<'i>> {
+    ) -> io::Result<JoinGroupResponse<'i>> where {
         self.call(
             request,
             ApiKey::JoinGroup,
@@ -568,7 +571,7 @@ where
     pub async fn leader_and_isr<'i>(
         &'i mut self,
         request: LeaderAndIsrRequest<'_>,
-    ) -> io::Result<LeaderAndIsrResponse<'i>> {
+    ) -> io::Result<LeaderAndIsrResponse<'i>> where {
         self.call(
             request,
             ApiKey::LeaderAndIsr,
@@ -580,7 +583,7 @@ where
     pub async fn leave_group<'i>(
         &'i mut self,
         request: LeaveGroupRequest<'_>,
-    ) -> io::Result<LeaveGroupResponse> {
+    ) -> io::Result<LeaveGroupResponse> where {
         self.call(
             request,
             ApiKey::LeaveGroup,
@@ -592,7 +595,7 @@ where
     pub async fn list_groups<'i>(
         &'i mut self,
         request: ListGroupsRequest,
-    ) -> io::Result<ListGroupsResponse<'i>> {
+    ) -> io::Result<ListGroupsResponse<'i>> where {
         self.call(
             request,
             ApiKey::ListGroups,
@@ -604,7 +607,7 @@ where
     pub async fn list_offsets<'i>(
         &'i mut self,
         request: ListOffsetsRequest<'_>,
-    ) -> io::Result<ListOffsetsResponse<'i>> {
+    ) -> io::Result<ListOffsetsResponse<'i>> where {
         self.call(
             request,
             ApiKey::ListOffsets,
@@ -616,7 +619,7 @@ where
     pub async fn metadata<'i>(
         &'i mut self,
         request: MetadataRequest<'_>,
-    ) -> io::Result<MetadataResponse<'i>> {
+    ) -> io::Result<MetadataResponse<'i>> where {
         self.call(
             request,
             ApiKey::Metadata,
@@ -628,7 +631,7 @@ where
     pub async fn offset_commit<'i>(
         &'i mut self,
         request: OffsetCommitRequest<'_>,
-    ) -> io::Result<OffsetCommitResponse<'i>> {
+    ) -> io::Result<OffsetCommitResponse<'i>> where {
         self.call(
             request,
             ApiKey::OffsetCommit,
@@ -640,7 +643,7 @@ where
     pub async fn offset_fetch<'i>(
         &'i mut self,
         request: OffsetFetchRequest<'_>,
-    ) -> io::Result<OffsetFetchResponse<'i>> {
+    ) -> io::Result<OffsetFetchResponse<'i>> where {
         self.call(
             request,
             ApiKey::OffsetFetch,
@@ -652,7 +655,7 @@ where
     pub async fn offset_for_leader_epoch<'i>(
         &'i mut self,
         request: OffsetForLeaderEpochRequest<'_>,
-    ) -> io::Result<OffsetForLeaderEpochResponse<'i>> {
+    ) -> io::Result<OffsetForLeaderEpochResponse<'i>> where {
         self.call(
             request,
             ApiKey::OffsetForLeaderEpoch,
@@ -661,10 +664,13 @@ where
         )
         .await
     }
-    pub async fn produce<'i>(
+    pub async fn produce<'i, R>(
         &'i mut self,
-        request: ProduceRequest<'_>,
-    ) -> io::Result<ProduceResponse<'i>> {
+        request: ProduceRequest<'_, R>,
+    ) -> io::Result<ProduceResponse<'i>>
+    where
+        R: Encode,
+    {
         self.call(
             request,
             ApiKey::Produce,
@@ -676,7 +682,7 @@ where
     pub async fn renew_delegation_token<'i>(
         &'i mut self,
         request: RenewDelegationTokenRequest<'_>,
-    ) -> io::Result<RenewDelegationTokenResponse> {
+    ) -> io::Result<RenewDelegationTokenResponse> where {
         self.call(
             request,
             ApiKey::RenewDelegationToken,
@@ -688,7 +694,7 @@ where
     pub async fn sasl_authenticate<'i>(
         &'i mut self,
         request: SaslAuthenticateRequest<'_>,
-    ) -> io::Result<SaslAuthenticateResponse<'i>> {
+    ) -> io::Result<SaslAuthenticateResponse<'i>> where {
         self.call(
             request,
             ApiKey::SaslAuthenticate,
@@ -700,7 +706,7 @@ where
     pub async fn sasl_handshake<'i>(
         &'i mut self,
         request: SaslHandshakeRequest<'_>,
-    ) -> io::Result<SaslHandshakeResponse<'i>> {
+    ) -> io::Result<SaslHandshakeResponse<'i>> where {
         self.call(
             request,
             ApiKey::SaslHandshake,
@@ -712,7 +718,7 @@ where
     pub async fn stop_replica<'i>(
         &'i mut self,
         request: StopReplicaRequest<'_>,
-    ) -> io::Result<StopReplicaResponse<'i>> {
+    ) -> io::Result<StopReplicaResponse<'i>> where {
         self.call(
             request,
             ApiKey::StopReplica,
@@ -724,7 +730,7 @@ where
     pub async fn sync_group<'i>(
         &'i mut self,
         request: SyncGroupRequest<'_>,
-    ) -> io::Result<SyncGroupResponse<'i>> {
+    ) -> io::Result<SyncGroupResponse<'i>> where {
         self.call(
             request,
             ApiKey::SyncGroup,
@@ -736,7 +742,7 @@ where
     pub async fn txn_offset_commit<'i>(
         &'i mut self,
         request: TxnOffsetCommitRequest<'_>,
-    ) -> io::Result<TxnOffsetCommitResponse<'i>> {
+    ) -> io::Result<TxnOffsetCommitResponse<'i>> where {
         self.call(
             request,
             ApiKey::TxnOffsetCommit,
@@ -748,7 +754,7 @@ where
     pub async fn update_metadata<'i>(
         &'i mut self,
         request: UpdateMetadataRequest<'_>,
-    ) -> io::Result<UpdateMetadataResponse> {
+    ) -> io::Result<UpdateMetadataResponse> where {
         self.call(
             request,
             ApiKey::UpdateMetadata,
@@ -760,7 +766,7 @@ where
     pub async fn write_txn_markers<'i>(
         &'i mut self,
         request: WriteTxnMarkersRequest<'_>,
-    ) -> io::Result<WriteTxnMarkersResponse<'i>> {
+    ) -> io::Result<WriteTxnMarkersResponse<'i>> where {
         self.call(
             request,
             ApiKey::WriteTxnMarkers,

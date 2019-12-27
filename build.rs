@@ -1,6 +1,8 @@
 #[cfg(feature = "regenerate")]
 mod regenerate {
     use std::{
+        borrow::Cow,
+        collections::BTreeSet,
         fs,
         io::{self, Write},
         str,
@@ -54,6 +56,51 @@ mod regenerate {
         }}
     }
 
+    #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
+    struct Param {
+        name: &'static str,
+        default: &'static str,
+    }
+
+    struct TyDef<'i> {
+        name: Cow<'i, str>,
+        params: &'static [Param],
+    }
+
+    impl<'i> From<&'i str> for TyDef<'i> {
+        fn from(name: &'i str) -> Self {
+            TyDef {
+                name: name.into(),
+                params: &[],
+            }
+        }
+    }
+
+    impl<'i> From<String> for TyDef<'i> {
+        fn from(name: String) -> Self {
+            TyDef {
+                name: name.into(),
+                params: &[],
+            }
+        }
+    }
+
+    impl<'i> TyDef<'i> {
+        fn with_lifetime(name: impl Into<Cow<'i, str>>) -> Self {
+            TyDef {
+                name: name.into(),
+                params: &[Param {
+                    name: "'i",
+                    default: "",
+                }],
+            }
+        }
+
+        fn to_doc(self, arena: Arena<'i>) -> DocBuilder<'i> {
+            arena.text(self.name)
+        }
+    }
+
     #[derive(Debug)]
     struct Rule<'i> {
         name: &'i str,
@@ -104,12 +151,16 @@ mod regenerate {
             "NULLABLE_STRING" => arena.text(format!("nullable_string()")),
             "BOOLEAN" => arena.text(format!("any().map(|b| b != 0)")),
             _ if i.starts_with("ARRAY") => arena.text(format!("bytes()")), // TODO
-            "RECORDS" => arena.text(format!("record_batch()")),            // TODO
+            "RECORDS" => arena.text(format!("R::parser()")),               // TODO
             _ => return None,
         })
     }
 
-    fn write_ty<'i>(field: &str, ty: &'i str) -> Option<std::borrow::Cow<'i, str>> {
+    fn write_ty<'i>(arena: Arena<'i>, field: &str, ty: &'i str) -> Option<DocBuilder<'i>> {
+        ty_def(field, ty).map(|def| def.to_doc(arena))
+    }
+
+    fn ty_def<'i>(field: &str, ty: &'i str) -> Option<TyDef<'i>> {
         match field {
             "error_code" => return Some("ErrorCode".into()),
             "api_key" => return Some("ApiKey".into()),
@@ -124,13 +175,19 @@ mod regenerate {
                 format!("u{}", ty.trim_start_matches(char::is_alphabetic)).into()
             }
             "varint" => "i32".into(),
-            "BYTES" | "varbytes" => "&'i [u8]".into(),
-            "NULLABLE_BYTES" => "Option<&'i [u8]>".into(),
-            "STRING" | "varstring" => "&'i str".into(),
-            "NULLABLE_STRING" => "Option<&'i str>".into(),
+            "BYTES" | "varbytes" => TyDef::with_lifetime("&'i [u8]"),
+            "NULLABLE_BYTES" => TyDef::with_lifetime("Option<&'i [u8]>"),
+            "STRING" | "varstring" => TyDef::with_lifetime("&'i str"),
+            "NULLABLE_STRING" => TyDef::with_lifetime("Option<&'i str>"),
             "BOOLEAN" => "bool".into(),
-            _ if ty.starts_with("ARRAY") => format!("&'i [u8]").into(), // TODO
-            "RECORDS" => "Option<RecordBatch<'i>>".into(),              // TODO
+            _ if ty.starts_with("ARRAY") => TyDef::with_lifetime("&'i [u8]"),
+            "RECORDS" => TyDef {
+                name: "Option<RecordBatch<R>>".into(),
+                params: &[Param {
+                    name: "R",
+                    default: "", // "Vec<Record<'i>>",
+                }],
+            },
             _ => return None,
         })
     }
@@ -141,7 +198,7 @@ mod regenerate {
             inflector::cases::snakecase::to_snake_case(&name),
             ":",
             arena.line(),
-            write_ty(name, i).unwrap_or_else(|| format!("{}", i).into()),
+            write_ty(arena, name, i).unwrap_or_else(|| arena.as_string(i)),
             ",",
         ]
         .group()
@@ -158,7 +215,12 @@ mod regenerate {
                 arena.line_(),
                 "pub fn ",
                 inflector::cases::snakecase::to_snake_case(&name),
-                "<'i, I>() -> impl Parser<I, Output = ",
+                "<'i, ",
+                arena.concat(
+                    self.non_lifetime_params()
+                    .map(|param| arena.text(param.name).append(": RecordBatchParser<I> + 'i, "))
+                ),
+                "I>() -> impl Parser<I, Output = ",
                 &name,
                 self.lifetime(),
                 "> + 'i",
@@ -269,17 +331,49 @@ mod regenerate {
             ]
         }
 
-        fn needs_lifetime(&self) -> bool {
+        fn needed_params(&self) -> BTreeSet<Param> {
             self.production
                 .iter()
-                .any(|e| write_ty("", e.name()).map_or(false, |n| n.contains("'i")))
-                || self.inner.iter().any(|rule| rule.needs_lifetime())
+                .flat_map(|e| ty_def("", e.name()).map_or(&[][..], |def| def.params))
+                .cloned()
+                .chain(self.inner.iter().flat_map(|rule| rule.needed_params()))
+                .collect()
         }
-        fn lifetime(&self) -> &'static str {
-            if self.needs_lifetime() {
-                "<'i>"
+
+        fn non_lifetime_params(&self) -> impl Iterator<Item = Param> {
+            self.needed_params()
+                .iter()
+                .cloned()
+                .filter(|param| param.name != "'i")
+                .collect::<Vec<_>>()
+                .into_iter()
+        }
+
+        fn params_definition(&self) -> String {
+            let params = self.needed_params();
+            if params.is_empty() {
+                "".into()
             } else {
-                ""
+                format!(
+                    "<{}>",
+                    params
+                        .iter()
+                        .map(|p| if p.default.is_empty() {
+                            p.name.to_string()
+                        } else {
+                            format!("{} = {}", p.name, p.default)
+                        })
+                        .format(", ")
+                )
+            }
+        }
+
+        fn lifetime(&self) -> String {
+            let params = self.needed_params();
+            if params.is_empty() {
+                "".into()
+            } else {
+                format!("<{}>", params.iter().map(|p| p.name).format(", "))
             }
         }
 
@@ -294,7 +388,7 @@ mod regenerate {
                 arena.line_(),
                 "pub struct ",
                 inflector::cases::pascalcase::to_pascal_case(name),
-                self.lifetime(),
+                self.params_definition(),
                 " {",
                 self.generate_fields(out, arena),
                 arena.line_(),
@@ -306,6 +400,13 @@ mod regenerate {
                 " crate::Encode for ",
                 inflector::cases::pascalcase::to_pascal_case(name),
                 self.lifetime(),
+                " where ",
+                arena.concat(self.non_lifetime_params().map(|param| {
+                    chain![arena;
+                        param.name,
+                        ": Encode,"
+                    ]
+                })),
                 "{",
                 chain![arena;
                     arena.line_(),
@@ -379,7 +480,7 @@ mod regenerate {
                             if let Some(ty) = inner
                                 .production
                                 .first()
-                                .and_then(|prod| write_ty(i, prod.name()))
+                                .and_then(|prod| write_ty(arena, i, prod.name()))
                             {
                                 return chain![arena;
                                     "pub ",
@@ -415,7 +516,7 @@ mod regenerate {
                                     if let Some(ty) = inner_rule
                                         .production
                                         .first()
-                                        .and_then(|prod| write_ty(i, prod.name()))
+                                        .and_then(|prod| write_ty(arena, i, prod.name()))
                                     {
                                         return chain![arena;
                                             "pub ",
@@ -628,11 +729,23 @@ where
 
             writeln!(
                 parser_out,
-                "pub async fn {name}<'i>(&'i mut self, request: {base_type_name}Request{request_lt}) -> io::Result<{base_type_name}Response{response_lt}> {{",
+                "pub async fn {name}<'i{ty_params}>(&'i mut self, request: {base_type_name}Request{request_lt}) -> io::Result<{base_type_name}Response{response_lt}> where {where_bounds} {{",
                 name = name,
+                ty_params = request.needed_params()
+                    .iter().chain(response.needed_params().iter())
+                    .filter(|param| param.name != "'i")
+                    .map(|p| format!(", {}", p.name))
+                    .format(""),
                 base_type_name = base_type_name,
                 request_lt = request.lifetime().replace("'i", "'_"),
                 response_lt = response.lifetime(),
+                where_bounds = request.non_lifetime_params().map(|param| {
+                        format!("{}: Encode,", param.name)
+                    })
+                    .chain(
+                        response.non_lifetime_params().map(|param| format!("{}: RecordBatchParser<combine::stream::easy::Stream<&'i [u8]>> + 'i,", param.name))
+                    )
+                    .format(" ")
             )?;
             writeln!(parser_out, "    self.call(request, ApiKey::{base_type_name}, {name}_request::VERSION, {name}_response()).await", name = name, base_type_name = base_type_name)?;
             writeln!(parser_out, "}}")?;

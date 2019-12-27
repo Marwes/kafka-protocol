@@ -213,7 +213,7 @@ mod tests {
                 headers: Vec::new(),
             }],
         };
-        let produce_response = client
+        let produce_response: ProduceResponse = client
             .produce(ProduceRequest {
                 acks: Acks::Full,
                 timeout: 1000,
@@ -285,7 +285,7 @@ mod tests {
 
         produce_test_message(&mut client).await;
 
-        let fetch = client
+        let fetch: FetchResponse<Vec<Record>> = client
             .fetch(FetchRequest {
                 replica_id: -1,
                 session_epoch: 0,

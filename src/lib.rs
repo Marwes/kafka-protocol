@@ -206,7 +206,10 @@ where
     }
 }
 
-impl Encode for Option<RecordBatch<'_>> {
+impl<R> Encode for Option<RecordBatch<R>>
+where
+    R: Encode,
+{
     fn encode_len(&self) -> usize {
         match self {
             Some(t) => 0i32.encode_len() + t.encode_len(),
@@ -327,7 +330,7 @@ encode_as! {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct RecordBatch<'i> {
+pub struct RecordBatch<R> {
     base_offset: i64,
     // batch_length: i32,
     partition_leader_epoch: i32,
@@ -350,7 +353,7 @@ pub struct RecordBatch<'i> {
     producer_id: i64,
     producer_epoch: i16,
     base_sequence: i32,
-    records: Vec<Record<'i>>,
+    records: R, // TODO Avoid a vec here when serializing
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -370,7 +373,9 @@ pub struct RecordHeader<'i> {
     value: &'i [u8],
 }
 
-impl<'i> RecordBatch<'i> {
+pub type OwnedRecordBatch<'i> = RecordBatch<Vec<Record<'i>>>;
+
+impl<'i> OwnedRecordBatch<'i> {
     fn verify<I>(
         range: &[u8],
         record_set: crate::parser::RecordSet<'i>,
@@ -452,7 +457,7 @@ impl<'i> RecordBatch<'i> {
     }
 }
 
-fn record_batch<'i, I>() -> impl Parser<I, Output = Option<RecordBatch<'i>>>
+fn record_batch<'i, I>() -> impl Parser<I, Output = Option<OwnedRecordBatch<'i>>>
 where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
@@ -532,7 +537,10 @@ where
     }
 }
 
-impl Encode for RecordBatch<'_> {
+impl<R> Encode for RecordBatch<R>
+where
+    R: Encode,
+{
     fn encode_len(&self) -> usize {
         self.base_offset.encode_len()
             + mem::size_of::<i32>() // self.batch_length.encode_len()
@@ -629,5 +637,22 @@ impl TryFrom<i16> for Acks {
             1 => Acks::Full,
             _ => return Err("Invalid Acks"),
         })
+    }
+}
+
+pub trait RecordBatchParser<Input>: Sized
+where
+    Input: combine::Stream,
+{
+    fn parser() -> combine::parser::combinator::FnOpaque<Input, Option<RecordBatch<Self>>>;
+}
+
+impl<'i, I> RecordBatchParser<I> for Vec<Record<'i>>
+where
+    I: combine::RangeStream<Token = u8, Range = &'i [u8]> + 'i,
+    I::Error: combine::ParseError<I::Token, I::Range, I::Position>,
+{
+    fn parser() -> combine::parser::combinator::FnOpaque<I, Option<RecordBatch<Self>>> {
+        combine::opaque!(combine::parser::combinator::no_partial(record_batch()),)
     }
 }
