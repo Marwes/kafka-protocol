@@ -8,7 +8,7 @@ use crate::{
         produce_request::{Data, TopicData},
         ProduceRequest, ProduceResponse,
     },
-    Acks, Buffer, Encode, Error, Record, RecordBatch, Result,
+    Acks, Buffer, Encode, Error, Record, RecordBatch, RecordBatchAttributes, Result,
 };
 
 pub struct RecordInput<'i> {
@@ -114,10 +114,10 @@ fn mk_produce_request(
         count += encoded_records.records;
         let record_set = RecordBatch {
             base_offset: 0,
-            attributes: 0,
+            attributes: RecordBatchAttributes::default(),
             first_timestamp: 0,
             max_timestamp: 0,
-            producer_id: 0,
+            producer_id: -1,
             producer_epoch: 0,
             partition_leader_epoch: 0,
             last_offset_delta: encoded_records.records - 1,
@@ -165,7 +165,7 @@ mod tests {
 
     use combine::EasyParser;
 
-    use crate::{client::tests::*, error::ErrorCode, parser::*, FETCH_EARLIEST_OFFSET};
+    use crate::{client::tests::*, error::ErrorCode, parser::*, FETCH_LATEST_OFFSET};
 
     #[tokio::test]
     async fn produce_and_fetch() {
@@ -184,7 +184,7 @@ mod tests {
                     topic: "test",
                     partitions: vec![crate::parser::list_offsets_request::Partitions {
                         partition: 0,
-                        timestamp: FETCH_EARLIEST_OFFSET,
+                        timestamp: FETCH_LATEST_OFFSET,
                         current_leader_epoch: 0,
                     }],
                 }],

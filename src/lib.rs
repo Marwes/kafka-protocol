@@ -354,7 +354,7 @@ pub struct RecordBatch<R> {
     // bit 4: isTransactional (0 means not transactional)
     // bit 5: isControlBatch (0 means not a control batch)
     // bit 6~15: unused
-    attributes: i16,
+    attributes: RecordBatchAttributes,
     last_offset_delta: i32,
     first_timestamp: i64,
     max_timestamp: i64,
@@ -424,7 +424,7 @@ impl<'i> OwnedRecordBatch<'i> {
         Ok(RecordBatch {
             base_offset,
             partition_leader_epoch,
-            attributes,
+            attributes: RecordBatchAttributes(attributes),
             last_offset_delta,
             first_timestamp,
             max_timestamp,
@@ -473,14 +473,16 @@ where
     (position(), nullable_bytes())
         .flat_map(|(position, bytes)| match bytes {
             Some(bytes) if !bytes.is_empty() => {
-                let attributes = (&bytes[mem::size_of::<i64>()
-                    + mem::size_of::<i32>()
-                    + mem::size_of::<i32>()
-                    + mem::size_of::<i8>()
-                    + mem::size_of::<i32>()..])
-                    .get_i16();
+                let attributes = RecordBatchAttributes(
+                    (&bytes[mem::size_of::<i64>()
+                        + mem::size_of::<i32>()
+                        + mem::size_of::<i32>()
+                        + mem::size_of::<i8>()
+                        + mem::size_of::<i32>()..])
+                        .get_i16(),
+                );
 
-                if (attributes & (1 << 4)) != 0 {
+                if attributes.is_control_batch() {
                     log::trace!("Control batch");
                 }
 
@@ -681,4 +683,51 @@ where
     fn parser() -> combine::parser::combinator::FnOpaque<I, Option<RecordBatch<Self>>> {
         combine::opaque!(combine::parser::combinator::no_partial(record_batch()),)
     }
+}
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+pub struct RecordBatchAttributes(i16);
+
+impl Encode for RecordBatchAttributes {
+    fn encode_len(&self) -> usize {
+        mem::size_of::<Self>()
+    }
+
+    fn encode(&self, writer: &mut impl Buffer) {
+        writer.put_i16(self.0);
+    }
+}
+
+impl RecordBatchAttributes {
+    pub fn compression(self) -> Option<Compression> {
+        match self.0 & 0b111 {
+            0 => None,
+            1 => Some(Compression::Gzip),
+            2 => Some(Compression::Snappy),
+            3 => Some(Compression::Lz4),
+            4 => Some(Compression::Zstd),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn timestamp_type(self) -> bool {
+        (self.0 & 0b1000) != 0
+    }
+
+    pub fn is_transactional(self) -> bool {
+        (self.0 & 0b10000) != 0
+    }
+
+    pub fn is_control_batch(self) -> bool {
+        (self.0 & 0b100000) != 0
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Compression {
+    None,
+    Gzip,
+    Snappy,
+    Lz4,
+    Zstd,
 }

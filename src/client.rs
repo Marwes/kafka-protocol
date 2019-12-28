@@ -112,7 +112,7 @@ pub(crate) mod tests {
 
     use std::{str, time::Duration};
 
-    use crate::{parser::*, Acks, ErrorCode, Record, RecordBatch, FETCH_EARLIEST_OFFSET};
+    use crate::{parser::*, Acks, ErrorCode, Record, RecordBatch, FETCH_LATEST_OFFSET};
 
     pub fn kafka_host() -> String {
         std::str::from_utf8(
@@ -195,10 +195,10 @@ pub(crate) mod tests {
 
         let record_set = RecordBatch {
             base_offset: 0,
-            attributes: 0,
+            attributes: Default::default(),
             first_timestamp: 0,
             max_timestamp: 0,
-            producer_id: 0,
+            producer_id: -1,
             producer_epoch: 0,
             partition_leader_epoch: 0,
             // batch_length: 1,
@@ -266,7 +266,7 @@ pub(crate) mod tests {
                     topic: "test",
                     partitions: vec![crate::parser::list_offsets_request::Partitions {
                         partition: 0,
-                        timestamp: FETCH_EARLIEST_OFFSET,
+                        timestamp: FETCH_LATEST_OFFSET,
                         current_leader_epoch: 0,
                     }],
                 }],
