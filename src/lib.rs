@@ -23,6 +23,7 @@ extern crate quick_error;
 
 pub mod api_key;
 pub mod client;
+pub mod consumer;
 pub mod error;
 pub mod parser;
 pub mod producer;
