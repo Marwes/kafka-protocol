@@ -5,11 +5,7 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        array(|| {
-            (string().expected("name"),)
-                .map(|(name,)| Topics { name })
-                .expected("topics")
-        }),
+        array(|| string().expected("topics").expected("topics")),
         any().map(|b| b != 0).expected("allow_auto_topic_creation"),
         any()
             .map(|b| b != 0)
@@ -37,7 +33,7 @@ where
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MetadataRequest<'i> {
-    pub topics: Vec<Topics<'i>>,
+    pub topics: Vec<&'i str>,
     pub allow_auto_topic_creation: bool,
     pub include_cluster_authorized_operations: bool,
     pub include_topic_authorized_operations: bool,
@@ -59,17 +55,3 @@ impl<'i> crate::Encode for MetadataRequest<'i> {
 }
 
 pub const VERSION: i16 = 8;
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Topics<'i> {
-    pub name: &'i str,
-}
-
-impl<'i> crate::Encode for Topics<'i> {
-    fn encode_len(&self) -> usize {
-        self.name.encode_len()
-    }
-    fn encode(&self, writer: &mut impl Buffer) {
-        self.name.encode(writer);
-    }
-}

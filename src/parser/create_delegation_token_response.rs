@@ -18,8 +18,7 @@ where
             .map(|(principal_type, name)| Owner {
                 principal_type,
                 name,
-            })
-            .expected("owner"),
+            }),
         be_i64().expected("issue_timestamp"),
         be_i64().expected("expiry_timestamp"),
         be_i64().expected("max_timestamp"),

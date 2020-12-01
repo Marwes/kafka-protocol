@@ -5,7 +5,7 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        array(|| string().expected("groups")),
+        array(|| string().expected("groups").expected("groups")),
         any()
             .map(|b| b != 0)
             .expected("include_authorized_operations"),

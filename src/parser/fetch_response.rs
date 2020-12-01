@@ -62,8 +62,7 @@ where
                                         preferred_read_replica,
                                     }
                                 },
-                            )
-                            .expected("partition_header"),
+                            ),
                         R::parser().expected("record_set"),
                     )
                         .map(|(partition_header, record_set)| PartitionResponses {

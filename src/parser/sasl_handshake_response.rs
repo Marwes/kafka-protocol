@@ -10,7 +10,7 @@ where
                 ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
             })
             .expected("error_code"),
-        array(|| string().expected("mechanisms")),
+        array(|| string().expected("mechanisms").expected("mechanisms")),
     )
         .map(|(error_code, mechanisms)| SaslHandshakeResponse {
             error_code,

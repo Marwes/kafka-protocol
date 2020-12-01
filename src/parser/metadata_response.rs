@@ -44,9 +44,13 @@ where
                         be_i32().expected("partition_index"),
                         be_i32().expected("leader_id"),
                         be_i32().expected("leader_epoch"),
-                        array(|| be_i32().expected("replica_nodes")),
-                        array(|| be_i32().expected("isr_nodes")),
-                        array(|| be_i32().expected("offline_replicas")),
+                        array(|| be_i32().expected("replica_nodes").expected("replica_nodes")),
+                        array(|| be_i32().expected("isr_nodes").expected("isr_nodes")),
+                        array(|| {
+                            be_i32()
+                                .expected("offline_replicas")
+                                .expected("offline_replicas")
+                        }),
                     )
                         .map(
                             |(

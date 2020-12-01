@@ -12,7 +12,7 @@ where
         array(|| {
             (
                 string().expected("topic"),
-                array(|| be_i32().expected("partition_ids")),
+                array(|| be_i32().expected("partition_ids").expected("partition_ids")),
             )
                 .map(|(topic, partition_ids)| Partitions {
                     topic,

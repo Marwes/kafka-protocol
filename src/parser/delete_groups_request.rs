@@ -4,7 +4,8 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (array(|| string().expected("groups")),).map(|(groups,)| DeleteGroupsRequest { groups })
+    (array(|| string().expected("groups").expected("groups")),)
+        .map(|(groups,)| DeleteGroupsRequest { groups })
 }
 
 #[derive(Clone, Debug, PartialEq)]

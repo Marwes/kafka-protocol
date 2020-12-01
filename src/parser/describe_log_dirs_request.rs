@@ -7,7 +7,7 @@ where
     (array(|| {
         (
             string().expected("topic"),
-            array(|| be_i32().expected("partitions")),
+            array(|| be_i32().expected("partitions").expected("partitions")),
         )
             .map(|(topic, partitions)| Topics { topic, partitions })
             .expected("topics")

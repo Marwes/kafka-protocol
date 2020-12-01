@@ -5,7 +5,7 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        array(|| string().expected("topic_names")),
+        array(|| string().expected("topic_names").expected("topic_names")),
         be_i32().expected("timeout_ms"),
     )
         .map(|(topic_names, timeout_ms)| DeleteTopicsRequest {

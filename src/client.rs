@@ -94,7 +94,9 @@ where
             .parse(&self.buf[mem::size_of::<i32>()..])
             .expect("Invalid header");
         log::trace!("Response rest: {}", rest.len());
-        let (response, rest) = parser.easy_parse(rest).expect("Invalid response");
+        let (response, rest) = parser
+            .easy_parse(rest)
+            .unwrap_or_else(|err| panic!("Invalid response {:?}", err));
         assert!(
             rest.is_empty(),
             "{} bytes remaining in response: {:?}",
@@ -177,7 +179,7 @@ pub(crate) mod tests {
                 allow_auto_topic_creation: false,
                 include_topic_authorized_operations: false,
                 include_cluster_authorized_operations: false,
-                topics: vec![crate::parser::metadata_request::Topics { name: "test" }],
+                topics: vec!["test"],
             })
             .await
             .unwrap();

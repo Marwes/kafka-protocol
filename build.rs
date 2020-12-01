@@ -3,7 +3,7 @@ mod regenerate {
     use std::{
         borrow::Cow,
         collections::BTreeSet,
-        fs,
+        fmt, fs,
         io::{self, Write},
         str,
     };
@@ -46,7 +46,7 @@ mod regenerate {
                     Value => varbytes"#;
 
     macro_rules! chain {
-    ($alloc: expr; $first: expr, $($rest: expr),* $(,)?) => {{
+        ($alloc: expr, $first: expr, $($rest: expr),* $(,)?) => {{
             #[allow(unused_mut)]
             let mut doc = ::pretty::DocBuilder($alloc, $first.into());
             $(
@@ -56,7 +56,7 @@ mod regenerate {
         }}
     }
 
-    #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
+    #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
     struct Param {
         name: &'static str,
         default: &'static str,
@@ -101,7 +101,132 @@ mod regenerate {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
+    enum Size {
+        S8,
+        S16,
+        S32,
+        S64,
+    }
+
+    impl fmt::Display for Size {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                Self::S8 => f.write_str("8"),
+                Self::S16 => f.write_str("16"),
+                Self::S32 => f.write_str("32"),
+                Self::S64 => f.write_str("64"),
+            }
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    enum Type {
+        ApiKey,
+        ErrorCode,
+        Acks,
+        VarInt,
+        VarString,
+        VarBytes,
+        Int(Size),
+        UInt(Size),
+        NullableBytes,
+        NullableString,
+        String,
+        Bytes,
+        Bool,
+        Array,
+        Records,
+    }
+
+    impl Type {
+        fn new(name: &str) -> Type {
+            Type::new_(name).unwrap_or_else(|| panic!("Unexpected type: {}", name))
+        }
+
+        fn new_(name: &str) -> Option<Type> {
+            Some(match name {
+                _ if name.starts_with("int") || name.starts_with("INT") => {
+                    Type::Int(match &name[3..] {
+                        "8" => Size::S8,
+                        "16" => Size::S16,
+                        "32" => Size::S32,
+                        "64" => Size::S64,
+                        _ => panic!("Unexpected type {}", name),
+                    })
+                }
+                _ if name.starts_with("uint") || name.starts_with("UINT") => {
+                    Type::UInt(match &name[3..] {
+                        "8" => Size::S8,
+                        "16" => Size::S16,
+                        "32" => Size::S32,
+                        "64" => Size::S64,
+                        _ => panic!("Unexpected type {}", name),
+                    })
+                }
+
+                "varstring" => Type::VarString,
+                "varbytes" => Type::VarBytes,
+                "varint" => Type::VarInt,
+                "BYTES" => Type::Bytes,
+                "NULLABLE_BYTES" => Type::NullableBytes,
+                "STRING" => Type::String,
+                "NULLABLE_STRING" => Type::NullableString,
+                "BOOLEAN" => Type::Bool,
+                _ if name.starts_with("ARRAY") => Type::Array, // TODO
+                "RECORDS" => Type::Records,                    // TODO
+                _ => return None,
+            })
+        }
+
+        fn generate_parser<'i>(&self, arena: Arena<'i>) -> DocBuilder<'i> {
+            match self {
+                Type::ErrorCode => arena.text("be_i16().and_then(|i| ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))"),
+                Type::ApiKey =>  arena.text("be_i16().and_then(|i| ApiKey::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))"),
+                Type::Acks => arena.text("be_i16().and_then(|i| Acks::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))"),
+                Type::Int(s) => arena.text(format!(
+                    "be_i{}()",
+                    s
+                )),
+                Type::UInt(s)  => arena.text(format!(
+                    "be_u{}()",
+                    s
+                )),
+                Type::VarString => arena.text(format!("varstring()")),
+                Type::VarBytes => arena.text(format!("varbytes()")),
+                Type::VarInt => arena.text(format!("varint()")),
+                Type::Bytes => arena.text(format!("bytes()")),
+                Type::NullableBytes => arena.text(format!("nullable_bytes()")),
+                Type::String => arena.text(format!("string()")),
+                Type::NullableString => arena.text(format!("nullable_string()")),
+                Type::Bool => arena.text(format!("any().map(|b| b != 0)")),
+                Type::Array => arena.text(format!("bytes()")),
+                Type::Records => arena.text(format!("R::parser()")),
+            }
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    enum KafkaParser<'i> {
+        Atom(Type),
+        Array {
+            varlen: bool,
+            elem_name: &'i str,
+            elem: Box<KafkaParser<'i>>,
+        },
+        Composite {
+            needed_params: BTreeSet<Param>,
+            parsers: Vec<KafkaParserField<'i>>,
+        },
+    }
+
+    #[derive(Debug, PartialEq)]
+    struct KafkaParserField<'i> {
+        name: &'i str,
+        parser: KafkaParser<'i>,
+    }
+
+    #[derive(Debug, PartialEq)]
     struct Rule<'i> {
         name: &'i str,
         version: Option<i32>,
@@ -109,58 +234,25 @@ mod regenerate {
         inner: Vec<Rule<'i>>,
     }
 
-    #[derive(Debug)]
+    #[derive(Clone, PartialEq, Debug)]
     enum Elem<'i> {
-        Multi(bool, &'i str),
+        Multi { varlen: bool, name: &'i str },
         Ident(&'i str),
     }
 
     impl<'i> Elem<'i> {
-        fn snakecase_name(&self) -> String {
-            inflector::cases::snakecase::to_snake_case(self.name())
-        }
         fn name(&self) -> &'i str {
             match *self {
-                Elem::Multi(_, i) | Elem::Ident(i) => i,
+                Elem::Multi { name, .. } | Elem::Ident(name) => name,
             }
         }
     }
 
-    fn write_parser<'i>(field: &str, i: &'i str, arena: Arena<'i>) -> Option<DocBuilder<'i>> {
-        match field {
-            "error_code" => return Some(arena.text("be_i16().and_then(|i| ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))")),
-            "api_key" => return Some(arena.text("be_i16().and_then(|i| ApiKey::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))")),
-            "acks" => return Some(arena.text("be_i16().and_then(|i| Acks::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))")),
-            _ => (),
-        }
-        Some(match i {
-            _ if i.starts_with("int") || i.starts_with("INT") => arena.text(format!(
-                "be_i{}()",
-                i.trim_start_matches(char::is_alphabetic)
-            )),
-            _ if i.starts_with("uint") || i.starts_with("UINT") => arena.text(format!(
-                "be_u{}()",
-                i.trim_start_matches(char::is_alphabetic)
-            )),
-            "varstring" => arena.text(format!("varstring()")),
-            "varbytes" => arena.text(format!("varbytes()")),
-            "varint" => arena.text(format!("varint()")),
-            "BYTES" => arena.text(format!("bytes()")),
-            "NULLABLE_BYTES" => arena.text(format!("nullable_bytes()")),
-            "STRING" => arena.text(format!("string()")),
-            "NULLABLE_STRING" => arena.text(format!("nullable_string()")),
-            "BOOLEAN" => arena.text(format!("any().map(|b| b != 0)")),
-            _ if i.starts_with("ARRAY") => arena.text(format!("bytes()")), // TODO
-            "RECORDS" => arena.text(format!("R::parser()")),               // TODO
-            _ => return None,
-        })
-    }
-
-    fn write_ty<'i>(arena: Arena<'i>, field: &str, ty: &'i str) -> Option<DocBuilder<'i>> {
+    fn write_ty<'i>(arena: Arena<'i>, field: &str, ty: &Type) -> Option<DocBuilder<'i>> {
         ty_def(field, ty).map(|def| def.to_doc(arena))
     }
 
-    fn ty_def<'i>(field: &str, ty: &'i str) -> Option<TyDef<'i>> {
+    fn ty_def<'i>(field: &str, ty: &Type) -> Option<TyDef<'i>> {
         match field {
             "error_code" => return Some("ErrorCode".into()),
             "api_key" => return Some("ApiKey".into()),
@@ -168,20 +260,16 @@ mod regenerate {
             _ => (),
         }
         Some(match ty {
-            _ if ty.starts_with("int") || ty.starts_with("INT") => {
-                format!("i{}", ty.trim_start_matches(char::is_alphabetic)).into()
-            }
-            _ if ty.starts_with("uint") || ty.starts_with("UINT") => {
-                format!("u{}", ty.trim_start_matches(char::is_alphabetic)).into()
-            }
-            "varint" => "i32".into(),
-            "BYTES" | "varbytes" => TyDef::with_lifetime("&'i [u8]"),
-            "NULLABLE_BYTES" => TyDef::with_lifetime("Option<&'i [u8]>"),
-            "STRING" | "varstring" => TyDef::with_lifetime("&'i str"),
-            "NULLABLE_STRING" => TyDef::with_lifetime("Option<&'i str>"),
-            "BOOLEAN" => "bool".into(),
-            _ if ty.starts_with("ARRAY") => TyDef::with_lifetime("&'i [u8]"),
-            "RECORDS" => TyDef {
+            Type::Int(s) => format!("i{}", s).into(),
+            Type::UInt(s) => format!("u{}", s).into(),
+            Type::VarInt => "i32".into(),
+            Type::Bytes | Type::VarBytes => TyDef::with_lifetime("&'i [u8]"),
+            Type::NullableBytes => TyDef::with_lifetime("Option<&'i [u8]>"),
+            Type::String | Type::VarString => TyDef::with_lifetime("&'i str"),
+            Type::NullableString => TyDef::with_lifetime("Option<&'i str>"),
+            Type::Bool => "bool".into(),
+            Type::Array => TyDef::with_lifetime("&'i [u8]"),
+            Type::Records => TyDef {
                 name: "Option<RecordBatch<R>>".into(),
                 params: &[Param {
                     name: "R",
@@ -192,156 +280,233 @@ mod regenerate {
         })
     }
 
-    fn write_field<'i>(name: &'i str, i: &'i str, arena: Arena<'i>) -> DocBuilder<'i> {
-        chain![arena;
-            "pub ",
-            inflector::cases::snakecase::to_snake_case(&name),
-            ":",
-            arena.line(),
-            write_ty(arena, name, i).unwrap_or_else(|| arena.as_string(i)),
-            ",",
-        ]
-        .group()
+    impl<'i> KafkaParserField<'i> {
+        fn snakecase_name(&self) -> String {
+            inflector::cases::snakecase::to_snake_case(self.name)
+        }
+
+        fn write_ty(&self, arena: Arena<'i>) -> DocBuilder<'i> {
+            self.parser.write_ty(self.name, arena)
+        }
     }
 
-    impl<'i> Rule<'i> {
-        fn generate_fn(&self, out: &mut impl io::Write) -> io::Result<()> {
-            let arena = pretty::Arena::new();
-
-            let name = self.name.replace(" ", "");
-
-            let fn_doc = chain![&arena;
-                "use super::*;",
-                arena.line_(),
-                "pub fn ",
-                inflector::cases::snakecase::to_snake_case(&name),
-                "<'i, ",
-                arena.concat(
-                    self.non_lifetime_params()
-                    .map(|param| arena.text(param.name).append(": RecordBatchParser<I> + 'i, "))
-                ),
-                "I>() -> impl Parser<I, Output = ",
-                &name,
-                self.lifetime(),
-                "> + 'i",
-                arena.line_(),
-                "where",
-                chain![&arena;
-                    arena.line_(),
-                    "I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,",
-                    arena.line_(),
-                    "I::Error: ParseError<I::Token, I::Range, I::Position>,",
-                ].nest(4),
-                arena.line_(),
-                "{",
-                self.generate(&name, &arena).nest(4),
-                arena.line(),
-                "}"
-            ];
-
-            let mut structs = Vec::new();
-            let struct_doc = self.generate_struct(&name, &mut structs, &arena);
-
-            let doc = chain![&arena;
-                fn_doc,
-                arena.line_(),
-                arena.line_(),
-                struct_doc,
-                arena.hardline(),
-                arena.hardline(),
-                arena.intersperse(structs, arena.hardline().append(arena.hardline())),
-            ];
-            writeln!(out, "{}", doc.1.pretty(80))
+    impl<'i> KafkaParser<'i> {
+        fn write_ty(&self, name: &'i str, arena: Arena<'i>) -> DocBuilder<'i> {
+            match self {
+                KafkaParser::Composite { .. } => chain![
+                    arena,
+                    inflector::cases::pascalcase::to_pascal_case(name),
+                    self.lifetime()
+                ],
+                KafkaParser::Array {
+                    elem, elem_name, ..
+                } => {
+                    chain![arena, "Vec<", elem.write_ty(elem_name, arena), ">"]
+                }
+                KafkaParser::Atom(t) => write_ty(arena, name, t).unwrap_or_else(|| {
+                    arena.text(inflector::cases::pascalcase::to_pascal_case(name))
+                }),
+            }
         }
 
         fn generate(&self, name: &'i str, arena: Arena<'i>) -> DocBuilder<'i> {
-            if let Some(doc) = self
-                .production
-                .first()
-                .and_then(|prod| write_parser(name, prod.name(), arena))
-            {
-                return doc;
-            }
-
-            if self.production.is_empty() {
-                return chain![arena;
-                    arena.line_(),
-                    "value(",
+            match self {
+                KafkaParser::Atom(typ) => chain![
+                    arena,
+                    typ.generate_parser(arena),
+                    ".expected(\"",
                     name,
-                    "{})",
-                ];
-            }
-
-            let name = inflector::cases::pascalcase::to_pascal_case(name);
-
-            chain![arena;
-                arena.line_(),
-                "(",
-                chain![arena;
-                    arena.line_(),
-                    arena.intersperse(self.production.iter().map(|elem| {
-                        match *elem {
-                            Elem::Multi(varlen, i) => {
-                                let inner = self.inner
-                                    .iter()
-                                    .find(|rule| rule.name == i)
-                                    .unwrap_or_else(|| panic!("Missing inner rule: {}", i));
-                                chain![arena;
-                                    if varlen {
-                                        "vararray"
-                                    } else {
-                                        "array"
-                                    },
-                                    "(||",
-                                    inner.generate(i, arena),
-                                    ".expected(\"",
-                                    i,
-                                    "\"),",
-                                    "),",
-                                ]
-                            }
-                            Elem::Ident(i) => {
-                                chain![arena;
-                                    match self.inner
-                                        .iter()
-                                        .find(|rule| rule.name == i)
-                                    {
-                                        Some(inner_rule) =>
-                                            write_parser(i, inner_rule.production.first().unwrap().name(), arena).unwrap_or_else(|| inner_rule.generate(i, arena)),
-                                        None => write_parser(i, i, arena).unwrap_or_else(|| panic!("write_parser: {} {:#?}", i, self.inner)),
-                                    },
-                                    ".expected(\"",
-                                    i,
-                                    "\"),",
-                                ]
-                            }
-                        }
-                    }), arena.line()),
-                ].nest(4),
-                arena.line_(),
-                ")",
-                ".map(|(",
-                arena.intersperse(self.production.iter().map(|e| e.snakecase_name()), arena.text(",")),
-                ",)| {",
-                chain![arena;
+                    "\")",
+                ],
+                KafkaParser::Array {
+                    varlen,
+                    elem,
+                    elem_name,
+                } => chain![
+                    arena,
+                    if *varlen { "vararray" } else { "array" },
+                    "(||",
+                    elem.generate(elem_name, arena),
+                    ".expected(\"",
                     name,
+                    "\"),",
+                    ")",
+                ],
+                KafkaParser::Composite { parsers, .. } => {
+                    if parsers.is_empty() {
+                        return chain![arena, arena.line_(), "value(", name, "{})",];
+                    }
+
+                    let name = inflector::cases::pascalcase::to_pascal_case(name);
+
+                    chain![
+                        arena,
+                        arena.line_(),
+                        "(",
+                        chain![
+                            arena,
+                            arena.line_(),
+                            arena.intersperse(
+                                parsers.iter().map(|parser| {
+                                    parser.parser.generate(&parser.name, arena).append(",")
+                                }),
+                                arena.line()
+                            ),
+                        ]
+                        .nest(4),
+                        arena.line_(),
+                        ")",
+                        ".map(|(",
+                        arena.intersperse(
+                            parsers.iter().map(|e| e.snakecase_name()),
+                            arena.text(",")
+                        ),
+                        ",)| {",
+                        chain![
+                            arena,
+                            name,
+                            "{",
+                            arena.line(),
+                            arena.intersperse(
+                                parsers.iter().map(|e| e.snakecase_name()),
+                                arena.text(",")
+                            ),
+                            arena.line(),
+                            "}",
+                        ],
+                        "})",
+                    ]
+                }
+            }
+        }
+
+        fn generate_struct(
+            &self,
+            name: &'i str,
+            out: &mut Vec<DocBuilder<'i>>,
+            arena: Arena<'i>,
+        ) -> DocBuilder<'i> {
+            match self {
+                KafkaParser::Array {
+                    elem, elem_name, ..
+                } => elem.generate_struct(elem_name, out, arena),
+                KafkaParser::Composite { parsers, .. } => chain![
+                    arena,
+                    "#[derive(Clone, Debug, PartialEq)]",
+                    arena.line_(),
+                    "pub struct ",
+                    inflector::cases::pascalcase::to_pascal_case(name),
+                    self.params_definition(),
+                    " {",
+                    KafkaParser::generate_fields(parsers, out, arena),
+                    arena.line_(),
+                    "}",
+                    arena.line_(),
+                    arena.line_(),
+                    "impl",
+                    self.lifetime(),
+                    " crate::Encode for ",
+                    inflector::cases::pascalcase::to_pascal_case(name),
+                    self.lifetime(),
+                    " where ",
+                    arena.concat(
+                        self.non_lifetime_params()
+                            .map(|param| { chain![arena, param.name, ": Encode,"] })
+                    ),
                     "{",
-                    arena.line(),
-                    arena.intersperse(self.production.iter().map(|e| e.snakecase_name()), arena.text(",")),
-                    arena.line(),
+                    chain![
+                        arena,
+                        arena.line_(),
+                        "fn encode_len(&self) -> usize {",
+                        chain![
+                            arena,
+                            arena.line_(),
+                            if parsers.is_empty() {
+                                arena.text("0")
+                            } else {
+                                arena.intersperse(
+                                    parsers.iter().map(|elem| {
+                                        chain![
+                                            arena,
+                                            "self.",
+                                            elem.snakecase_name(),
+                                            ".encode_len()",
+                                        ]
+                                    }),
+                                    arena.text(" + "),
+                                )
+                            }
+                        ]
+                        .nest(4),
+                        "}",
+                        arena.line_(),
+                        "fn encode(&self, ",
+                        if parsers.is_empty() { "_" } else { "writer" },
+                        ": &mut impl Buffer) {",
+                        chain![
+                            arena,
+                            arena.line_(),
+                            arena.intersperse(
+                                parsers.iter().map(|elem| {
+                                    chain![
+                                        arena,
+                                        "self.",
+                                        elem.snakecase_name(),
+                                        ".encode(writer);",
+                                    ]
+                                }),
+                                arena.line()
+                            ),
+                        ]
+                        .nest(4),
+                        "}",
+                    ]
+                    .nest(4),
                     "}",
                 ],
-                "})",
+                _ => arena.nil(),
+            }
+        }
+
+        fn generate_fields(
+            parsers: &[KafkaParserField<'i>],
+            out: &mut Vec<DocBuilder<'i>>,
+            arena: Arena<'i>,
+        ) -> DocBuilder<'i> {
+            chain![
+                arena,
+                arena.line_(),
+                arena.intersperse(
+                    parsers.iter().map(|parser_field| {
+                        let struct_doc =
+                            parser_field
+                                .parser
+                                .generate_struct(&parser_field.name, out, arena);
+                        dbg!(&parser_field.parser, &parser_field.parser.lifetime());
+                        out.push(struct_doc);
+                        chain![
+                            arena,
+                            "pub ",
+                            parser_field.snakecase_name(),
+                            ":",
+                            arena.line(),
+                            parser_field.write_ty(arena),
+                            ",",
+                        ]
+                        .group()
+                    }),
+                    arena.line()
+                ),
             ]
+            .nest(4)
         }
 
         fn needed_params(&self) -> BTreeSet<Param> {
-            self.production
-                .iter()
-                .flat_map(|e| ty_def("", e.name()).map_or(&[][..], |def| def.params))
-                .cloned()
-                .chain(self.inner.iter().flat_map(|rule| rule.needed_params()))
-                .collect()
+            match self {
+                KafkaParser::Composite { needed_params, .. } => needed_params.clone(),
+                KafkaParser::Array { elem, .. } => elem.needed_params(),
+                KafkaParser::Atom(_) => BTreeSet::new(),
+            }
         }
 
         fn non_lifetime_params(&self) -> impl Iterator<Item = Param> {
@@ -380,79 +545,158 @@ mod regenerate {
                 format!("<{}>", params.iter().map(|p| p.name).format(", "))
             }
         }
+    }
+
+    impl<'i> Rule<'i> {
+        fn as_parser_top(&self) -> KafkaParser<'i> {
+            self.as_parser(true)
+        }
+
+        fn as_parser(&self, top: bool) -> KafkaParser<'i> {
+            let mut parsers: Vec<_> = self
+                .production
+                .iter()
+                .map(|elem| KafkaParserField {
+                    name: elem.name(),
+                    parser: match *elem {
+                        Elem::Multi { varlen, name: i } => {
+                            let inner = self
+                                .inner
+                                .iter()
+                                .find(|rule| rule.name == i)
+                                .unwrap_or_else(|| panic!("Missing inner rule: {}", i));
+                            let t = inner.as_parser(false);
+                            KafkaParser::Array {
+                                varlen,
+                                elem_name: i,
+                                elem: Box::new(t),
+                            }
+                        }
+                        Elem::Ident(i) => match self.inner.iter().find(|rule| rule.name == i) {
+                            Some(inner_rule) => inner_rule.as_parser(false),
+                            None => KafkaParser::Atom(self.as_type(i)),
+                        },
+                    },
+                })
+                .collect();
+
+            if parsers.len() == 1 && !top {
+                parsers.pop().unwrap().parser
+            } else {
+                KafkaParser::Composite {
+                    parsers,
+                    needed_params: self.needed_params(),
+                }
+            }
+        }
+
+        fn as_type(&self, field: &str) -> Type {
+            match self.name {
+                "error_code" => Type::ErrorCode,
+                "api_key" => Type::ApiKey,
+                "acks" => Type::Acks,
+                _ => Type::new(field),
+            }
+        }
+
+        fn generate_fn(&self, parser: &KafkaParser, out: &mut impl io::Write) -> io::Result<()> {
+            let arena = pretty::Arena::new();
+
+            let name = self.name.replace(" ", "");
+
+            let fn_doc = chain![
+                &arena,
+                "use super::*;",
+                arena.line_(),
+                "pub fn ",
+                inflector::cases::snakecase::to_snake_case(&name),
+                "<'i, ",
+                arena.concat(self.non_lifetime_params().map(|param| {
+                    arena
+                        .text(param.name)
+                        .append(": RecordBatchParser<I> + 'i, ")
+                })),
+                "I>() -> impl Parser<I, Output = ",
+                &name,
+                self.lifetime(),
+                "> + 'i",
+                arena.line_(),
+                "where",
+                chain![
+                    &arena,
+                    arena.line_(),
+                    "I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,",
+                    arena.line_(),
+                    "I::Error: ParseError<I::Token, I::Range, I::Position>,",
+                ]
+                .nest(4),
+                arena.line_(),
+                "{",
+                parser.generate(&name, &arena).nest(4),
+                arena.line(),
+                "}"
+            ];
+
+            let mut structs = Vec::new();
+            let struct_doc = self.generate_struct(parser, &name, &mut structs, &arena);
+
+            let doc = chain![
+                &arena,
+                fn_doc,
+                arena.line_(),
+                arena.line_(),
+                struct_doc,
+                arena.hardline(),
+                arena.hardline(),
+                arena.intersperse(structs, arena.hardline().append(arena.hardline())),
+            ];
+            writeln!(out, "{}", doc.1.pretty(80))
+        }
+
+        fn needed_params(&self) -> BTreeSet<Param> {
+            self.production
+                .iter()
+                .flat_map(|e| {
+                    Type::new_(e.name())
+                        .and_then(|t| ty_def("", &t))
+                        .map_or(&[][..], |def| def.params)
+                })
+                .cloned()
+                .chain(self.inner.iter().flat_map(|rule| rule.needed_params()))
+                .collect()
+        }
+
+        fn non_lifetime_params(&self) -> impl Iterator<Item = Param> {
+            self.needed_params()
+                .iter()
+                .cloned()
+                .filter(|param| param.name != "'i")
+                .collect::<Vec<_>>()
+                .into_iter()
+        }
+
+        fn lifetime(&self) -> String {
+            let params = self.needed_params();
+            if params.is_empty() {
+                "".into()
+            } else {
+                format!("<{}>", params.iter().map(|p| p.name).format(", "))
+            }
+        }
 
         fn generate_struct(
             &self,
+            parser: &KafkaParser<'i>,
             name: &'i str,
             out: &mut Vec<DocBuilder<'i>>,
             arena: Arena<'i>,
         ) -> DocBuilder<'i> {
-            chain![arena;
-                "#[derive(Clone, Debug, PartialEq)]",
-                arena.line_(),
-                "pub struct ",
-                inflector::cases::pascalcase::to_pascal_case(name),
-                self.params_definition(),
-                " {",
-                self.generate_fields(out, arena),
-                arena.line_(),
-                "}",
-                arena.line_(),
-                arena.line_(),
-                "impl",
-                self.lifetime(),
-                " crate::Encode for ",
-                inflector::cases::pascalcase::to_pascal_case(name),
-                self.lifetime(),
-                " where ",
-                arena.concat(self.non_lifetime_params().map(|param| {
-                    chain![arena;
-                        param.name,
-                        ": Encode,"
-                    ]
-                })),
-                "{",
-                chain![arena;
-                    arena.line_(),
-                    "fn encode_len(&self) -> usize {",
-                    chain![arena;
-                        arena.line_(),
-                        if self.production.is_empty() {
-                            arena.text("0")
-                        } else {
-                            arena.intersperse(self.production.iter().map(|elem| {
-                                chain![arena;
-                                    "self.",
-                                    elem.snakecase_name(),
-                                    ".encode_len()",
-                                ]
-                            }), arena.text(" + "))
-                        }
-                    ].nest(4),
-                    "}",
-                    arena.line_(),
-                    "fn encode(&self, ",
-                    if self.production.is_empty() {
-                        "_"
-                    } else {
-                        "writer"
-                    },
-                    ": &mut impl Buffer) {",
-                    chain![arena;
-                        arena.line_(),
-                        arena.intersperse(self.production.iter().map(|elem| {
-                            chain![arena;
-                                "self.",
-                                elem.snakecase_name(),
-                                ".encode(writer);",
-                            ]
-                        }), arena.line()),
-                    ].nest(4),
-                    "}",
-                ].nest(4),
-                "}",
+            chain![
+                arena,
+                parser.generate_struct(name, out, arena),
                 if let Some(version) = self.version {
-                    chain![arena;
+                    chain![
+                        arena,
                         arena.line(),
                         arena.line(),
                         "pub const VERSION: i16 = ",
@@ -463,95 +707,6 @@ mod regenerate {
                     arena.nil()
                 }
             ]
-        }
-
-        fn generate_fields(
-            &self,
-            out: &mut Vec<DocBuilder<'i>>,
-            arena: Arena<'i>,
-        ) -> DocBuilder<'i> {
-            chain![arena;
-                arena.line_(),
-                arena.intersperse(self.production.iter().map(|elem| {
-                    match *elem {
-                        Elem::Multi(_, i) => {
-                            let inner = self
-                                .inner
-                                .iter()
-                                .find(|rule| rule.name == i)
-                                .unwrap_or_else(|| panic!("Missing inner rule: {}", i));
-
-                            if let Some(ty) = inner
-                                .production
-                                .first()
-                                .and_then(|prod| write_ty(arena, i, prod.name()))
-                            {
-                                return chain![arena;
-                                    "pub ",
-                                    inflector::cases::snakecase::to_snake_case(i),
-                                    ":",
-                                    arena.line_(),
-                                    "Vec<",
-                                    ty,
-                                    ">,",
-                                ]
-                            }
-
-                            let struct_doc = inner.generate_struct(i, out, arena);
-                            out.push(struct_doc);
-
-                            chain![arena;
-                                "pub ",
-                                inflector::cases::snakecase::to_snake_case(i),
-                                ":",
-                                arena.line(),
-                                "Vec<",
-                                inflector::cases::pascalcase::to_pascal_case(i),
-                                inner.lifetime(),
-                                ">,",
-                            ].group()
-                        }
-                        Elem::Ident(i) => {
-                            match self.inner
-                                .iter()
-                                .find(|rule| rule.name == i)
-                            {
-                                Some(inner_rule) => {
-                                    if let Some(ty) = inner_rule
-                                        .production
-                                        .first()
-                                        .and_then(|prod| write_ty(arena, i, prod.name()))
-                                    {
-                                        return chain![arena;
-                                            "pub ",
-                                            inflector::cases::snakecase::to_snake_case(i),
-                                            ":",
-                                            arena.line_(),
-                                            ty,
-                                            ",",
-                                        ]
-                                    }
-
-                                    let struct_doc = inner_rule.generate_struct(i, out, arena);
-                                    out.push(struct_doc);
-
-                                    chain![arena;
-                                        "pub ",
-                                        inflector::cases::snakecase::to_snake_case(i),
-                                        ":",
-                                        arena.line(),
-                                        inflector::cases::pascalcase::to_pascal_case(i),
-                                        inner_rule.lifetime(),
-                                        ",",
-                                    ].group()
-                                }
-                                None => write_field(i, i, arena),
-                            }
-                        }
-                    }
-                }), arena.line()),
-            ]
-            .nest(4)
         }
     }
 
@@ -576,7 +731,10 @@ mod regenerate {
         .map(|s: &str| s.trim_end_matches('\''))
         .expected("identifier or array");
         between(token('['), token(']'), (optional(token(':')), ident()))
-            .map(|(var, elem)| Elem::Multi(var.is_some(), elem))
+            .map(|(var, elem)| Elem::Multi {
+                varlen: var.is_some(),
+                name: elem,
+            })
             .or(ident_or_array.map(Elem::Ident))
     }
 
@@ -647,13 +805,54 @@ mod regenerate {
         }
 
         let mut current = Vec::new();
-        eprintln!("{:#?}", rules);
+        // eprintln!("{:#?}", rules);
         let mut iter = Vec::into_iter(rules);
         fixup(&mut current, 0, &mut iter);
         assert_eq!(current.len(), 1, "Fixup did not merge all rules into one");
         assert!(iter.next().is_none());
         let rule = current.pop().unwrap();
         Ok(rule)
+    }
+
+    fn merge_rule<'a>(mut l_rule: Rule<'a>, r_rule: Rule<'a>) -> Rule<'a> {
+        if true {
+            return r_rule;
+        }
+        if l_rule == r_rule {
+            return l_rule;
+        }
+        assert_eq!(l_rule.name, r_rule.name);
+
+        {
+            let mut l_iter = l_rule.production.iter().peekable();
+            let mut r_iter = r_rule.production.iter().peekable();
+            let mut production = Vec::new();
+
+            while let Some(l) = l_iter.next() {
+                if let Some(r) = r_iter.next() {
+                    if l == r {
+                        production.push(l.clone());
+                    } else {
+                        while r_iter.peek().is_some() && r_iter.peek() != Some(&l) {
+                            production.push(r_iter.next().unwrap().clone());
+                        }
+                        production.push(l.clone());
+                    }
+                } else {
+                    production.push(l.clone());
+                }
+            }
+            production.extend(r_iter.cloned());
+
+            l_rule.production = production;
+        }
+        for (l, r) in l_rule.inner.iter_mut().zip(r_rule.inner) {
+            match (l, r) {
+                (_, _) => (),
+            }
+        }
+
+        l_rule
     }
 
     fn generate_parsers() -> Result<(), Box<dyn std::error::Error>> {
@@ -667,8 +866,8 @@ mod regenerate {
             .map(|s| s.as_str())
             .chain(Some(RECORD_DEF))
             .enumerate()
-            .map(|(i, input)| -> io::Result<_> {
-                eprintln!("Input {}: {}", i, input);
+            .map(|(_, input)| -> io::Result<_> {
+                // eprintln!("Input {}: {}", i, input);
                 parse_rule(input)
             })
             .collect::<io::Result<Vec<_>>>()?;
@@ -677,12 +876,28 @@ mod regenerate {
         writeln!(parser_out, "use super::*;")?;
 
         let mut calls = std::collections::BTreeMap::<_, (Option<_>, Option<_>)>::new();
-        for rule in rules
-            .iter()
+
+        let parser_filter = std::env::var("PARSER_FILTER").ok();
+        println!("cargo:rerun-if-env-changed=PARSER_FILTER");
+        let rules = rules
+            .into_iter()
+            .filter(|rule| {
+                parser_filter
+                    .as_ref()
+                    .map_or(true, |f| rule.name.contains(f))
+            })
             .group_by(|rule| rule.name)
             .into_iter()
-            .map(|iter| iter.1.last().unwrap())
-        {
+            .map(|(_, mut group)| {
+                let mut merged_rule = group.next().unwrap();
+                for rule in group {
+                    merged_rule = merge_rule(merged_rule, rule);
+                }
+                merged_rule
+            })
+            .collect::<Vec<_>>();
+        for rule in &rules {
+            let parser = rule.as_parser_top();
             let entry = calls
                 .entry(
                     rule.name
@@ -703,7 +918,7 @@ mod regenerate {
             );
             // eprintln!("{:#?}", rule);
             let mut s = Vec::new();
-            rule.generate_fn(&mut s)?;
+            rule.generate_fn(&parser, &mut s)?;
             write!(out, "{}", str::from_utf8(&s).unwrap())?;
 
             writeln!(parser_out, "pub mod {};", name)?;
@@ -855,6 +1070,9 @@ where
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "regenerate")]
     regenerate::main()?;
+    if std::env::var("PARSER_FILTER").is_ok() {
+        panic!();
+    }
 
     Ok(())
 }

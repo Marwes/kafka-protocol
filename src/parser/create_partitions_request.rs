@@ -11,10 +11,9 @@ where
                 string().expected("topic"),
                 (
                     be_i32().expected("count"),
-                    array(|| bytes().expected("assignment")),
+                    array(|| bytes().expected("assignment").expected("assignment")),
                 )
-                    .map(|(count, assignment)| NewPartitions { count, assignment })
-                    .expected("new_partitions"),
+                    .map(|(count, assignment)| NewPartitions { count, assignment }),
             )
                 .map(|(topic, new_partitions)| TopicPartitions {
                     topic,

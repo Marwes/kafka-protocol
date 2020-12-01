@@ -13,7 +13,7 @@ where
                 array(|| {
                     (
                         be_i32().expected("partition_index"),
-                        array(|| be_i32().expected("broker_ids")),
+                        array(|| be_i32().expected("broker_ids").expected("broker_ids")),
                     )
                         .map(|(partition_index, broker_ids)| Assignments {
                             partition_index,

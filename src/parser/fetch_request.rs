@@ -49,7 +49,7 @@ where
         array(|| {
             (
                 string().expected("topic"),
-                array(|| be_i32().expected("partitions")),
+                array(|| be_i32().expected("partitions").expected("partitions")),
             )
                 .map(|(topic, partitions)| ForgottenTopicsData { topic, partitions })
                 .expected("forgotten_topics_data")

@@ -17,9 +17,9 @@ where
                         be_i32().expected("controller_epoch"),
                         be_i32().expected("leader"),
                         be_i32().expected("leader_epoch"),
-                        array(|| be_i32().expected("isr")),
+                        array(|| be_i32().expected("isr").expected("isr")),
                         be_i32().expected("zk_version"),
-                        array(|| be_i32().expected("replicas")),
+                        array(|| be_i32().expected("replicas").expected("replicas")),
                         any().map(|b| b != 0).expected("is_new"),
                     )
                         .map(

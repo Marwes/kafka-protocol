@@ -17,7 +17,7 @@ where
         be_i64().expected("producerId"),
         be_i16().expected("producerEpoch"),
         be_i32().expected("baseSequence"),
-        (array(|| {
+        array(|| {
             (
                 varint().expected("length"),
                 be_i8().expected("attributes"),
@@ -25,16 +25,14 @@ where
                 varint().expected("offsetDelta"),
                 varbytes().expected("key"),
                 varbytes().expected("value"),
-                (vararray(|| {
+                vararray(|| {
                     (
                         varstring().expected("headerKey"),
                         varbytes().expected("Value"),
                     )
                         .map(|(header_key, value)| Header { header_key, value })
-                        .expected("Header")
-                }),)
-                    .map(|(header,)| Headers { header })
-                    .expected("Headers"),
+                        .expected("Headers")
+                }),
             )
                 .map(
                     |(length, attributes, timestamp_delta, offset_delta, key, value, headers)| {
@@ -49,10 +47,8 @@ where
                         }
                     },
                 )
-                .expected("Record")
-        }),)
-            .map(|(record,)| Records { record })
-            .expected("records"),
+                .expected("records")
+        }),
     )
         .map(
             |(
@@ -103,7 +99,7 @@ pub struct RecordSet<'i> {
     pub producer_id: i64,
     pub producer_epoch: i16,
     pub base_sequence: i32,
-    pub records: Records<'i>,
+    pub records: Vec<Record<'i>>,
 }
 
 impl<'i> crate::Encode for RecordSet<'i> {
@@ -156,20 +152,6 @@ impl<'i> crate::Encode for Header<'i> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Headers<'i> {
-    pub header: Vec<Header<'i>>,
-}
-
-impl<'i> crate::Encode for Headers<'i> {
-    fn encode_len(&self) -> usize {
-        self.header.encode_len()
-    }
-    fn encode(&self, writer: &mut impl Buffer) {
-        self.header.encode(writer);
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct Record<'i> {
     pub length: i32,
     pub attributes: i8,
@@ -177,7 +159,7 @@ pub struct Record<'i> {
     pub offset_delta: i32,
     pub key: &'i [u8],
     pub value: &'i [u8],
-    pub headers: Headers<'i>,
+    pub headers: Vec<Header<'i>>,
 }
 
 impl<'i> crate::Encode for Record<'i> {
@@ -198,19 +180,5 @@ impl<'i> crate::Encode for Record<'i> {
         self.key.encode(writer);
         self.value.encode(writer);
         self.headers.encode(writer);
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Records<'i> {
-    pub record: Vec<Record<'i>>,
-}
-
-impl<'i> crate::Encode for Records<'i> {
-    fn encode_len(&self) -> usize {
-        self.record.encode_len()
-    }
-    fn encode(&self, writer: &mut impl Buffer) {
-        self.record.encode(writer);
     }
 }

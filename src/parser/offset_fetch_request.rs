@@ -9,11 +9,7 @@ where
         array(|| {
             (
                 string().expected("topic"),
-                array(|| {
-                    (be_i32().expected("partition"),)
-                        .map(|(partition,)| Partitions { partition })
-                        .expected("partitions")
-                }),
+                array(|| be_i32().expected("partitions").expected("partitions")),
             )
                 .map(|(topic, partitions)| Topics { topic, partitions })
                 .expected("topics")
@@ -41,23 +37,9 @@ impl<'i> crate::Encode for OffsetFetchRequest<'i> {
 pub const VERSION: i16 = 5;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Partitions {
-    pub partition: i32,
-}
-
-impl crate::Encode for Partitions {
-    fn encode_len(&self) -> usize {
-        self.partition.encode_len()
-    }
-    fn encode(&self, writer: &mut impl Buffer) {
-        self.partition.encode(writer);
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct Topics<'i> {
     pub topic: &'i str,
-    pub partitions: Vec<Partitions>,
+    pub partitions: Vec<i32>,
 }
 
 impl<'i> crate::Encode for Topics<'i> {

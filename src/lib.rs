@@ -433,7 +433,6 @@ impl<'i> OwnedRecordBatch<'i> {
             producer_epoch,
             base_sequence,
             records: records
-                .record
                 .into_iter()
                 .map(|r| {
                     let crate::parser::record_set::Record {
@@ -452,7 +451,6 @@ impl<'i> OwnedRecordBatch<'i> {
                         key,
                         value,
                         headers: headers
-                            .header
                             .into_iter()
                             .map(|header| RecordHeader {
                                 key: header.header_key,

@@ -9,7 +9,7 @@ where
             (
                 be_i8().expected("resource_type"),
                 string().expected("resource_name"),
-                array(|| string().expected("config_names")),
+                array(|| string().expected("config_names").expected("config_names")),
             )
                 .map(|(resource_type, resource_name, config_names)| Resources {
                     resource_type,
