@@ -51,9 +51,15 @@ impl Encode for &'_ EncodedRecord {
     }
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct Key {
+    topic: String,
+    partition: i32,
+}
+
 pub struct Producer<I> {
     client: Client<I>,
-    buffer: BTreeMap<(String, i32), EncodedRecord>,
+    buffer: BTreeMap<Key, EncodedRecord>,
 }
 
 impl Producer<tokio::net::TcpStream> {
@@ -77,7 +83,13 @@ where
             value,
         } = input;
         // TODO Avoid allocating topic
-        let encoded_records = self.buffer.entry((topic.into(), partition)).or_default();
+        let encoded_records = self
+            .buffer
+            .entry(Key {
+                topic: topic.into(),
+                partition,
+            })
+            .or_default();
 
         let offset_delta = encoded_records.records;
         encoded_records.push(Record {
@@ -102,12 +114,19 @@ where
 }
 
 fn mk_produce_request(
-    buffer: &BTreeMap<(String, i32), EncodedRecord>,
+    buffer: &BTreeMap<Key, EncodedRecord>,
     timeout: Duration,
 ) -> Result<ProduceRequest<&EncodedRecord>> {
     let mut topic_data: Vec<TopicData<_>> = Vec::new();
     let mut count = 0;
-    for (&(ref topic, partition), encoded_records) in buffer.iter() {
+    for (
+        &Key {
+            ref topic,
+            partition,
+        },
+        encoded_records,
+    ) in buffer.iter()
+    {
         if encoded_records.records == 0 {
             continue;
         }
