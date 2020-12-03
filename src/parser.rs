@@ -235,7 +235,7 @@ where
     ) -> io::Result<AddOffsetsToTxnResponse> where {
         self.call(
             request,
-            ApiKey::AddOffsetsToTxn,
+            ApiKey::ADD_OFFSETS_TO_TXN,
             add_offsets_to_txn_request::VERSION,
             add_offsets_to_txn_response(),
         )
@@ -247,7 +247,7 @@ where
     ) -> io::Result<AddPartitionsToTxnResponse<'i>> where {
         self.call(
             request,
-            ApiKey::AddPartitionsToTxn,
+            ApiKey::ADD_PARTITIONS_TO_TXN,
             add_partitions_to_txn_request::VERSION,
             add_partitions_to_txn_response(),
         )
@@ -259,7 +259,7 @@ where
     ) -> io::Result<AlterConfigsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::AlterConfigs,
+            ApiKey::ALTER_CONFIGS,
             alter_configs_request::VERSION,
             alter_configs_response(),
         )
@@ -271,7 +271,7 @@ where
     ) -> io::Result<AlterReplicaLogDirsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::AlterReplicaLogDirs,
+            ApiKey::ALTER_REPLICA_LOG_DIRS,
             alter_replica_log_dirs_request::VERSION,
             alter_replica_log_dirs_response(),
         )
@@ -283,7 +283,7 @@ where
     ) -> io::Result<ApiVersionsResponse> where {
         self.call(
             request,
-            ApiKey::ApiVersions,
+            ApiKey::API_VERSIONS,
             api_versions_request::VERSION,
             api_versions_response(),
         )
@@ -295,7 +295,7 @@ where
     ) -> io::Result<ControlledShutdownResponse<'i>> where {
         self.call(
             request,
-            ApiKey::ControlledShutdown,
+            ApiKey::CONTROLLED_SHUTDOWN,
             controlled_shutdown_request::VERSION,
             controlled_shutdown_response(),
         )
@@ -307,7 +307,7 @@ where
     ) -> io::Result<CreateAclsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::CreateAcls,
+            ApiKey::CREATE_ACLS,
             create_acls_request::VERSION,
             create_acls_response(),
         )
@@ -319,7 +319,7 @@ where
     ) -> io::Result<CreateDelegationTokenResponse<'i>> where {
         self.call(
             request,
-            ApiKey::CreateDelegationToken,
+            ApiKey::CREATE_DELEGATION_TOKEN,
             create_delegation_token_request::VERSION,
             create_delegation_token_response(),
         )
@@ -331,7 +331,7 @@ where
     ) -> io::Result<CreatePartitionsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::CreatePartitions,
+            ApiKey::CREATE_PARTITIONS,
             create_partitions_request::VERSION,
             create_partitions_response(),
         )
@@ -343,7 +343,7 @@ where
     ) -> io::Result<CreateTopicsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::CreateTopics,
+            ApiKey::CREATE_TOPICS,
             create_topics_request::VERSION,
             create_topics_response(),
         )
@@ -355,7 +355,7 @@ where
     ) -> io::Result<DeleteAclsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::DeleteAcls,
+            ApiKey::DELETE_ACLS,
             delete_acls_request::VERSION,
             delete_acls_response(),
         )
@@ -367,7 +367,7 @@ where
     ) -> io::Result<DeleteGroupsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::DeleteGroups,
+            ApiKey::DELETE_GROUPS,
             delete_groups_request::VERSION,
             delete_groups_response(),
         )
@@ -379,7 +379,7 @@ where
     ) -> io::Result<DeleteRecordsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::DeleteRecords,
+            ApiKey::DELETE_RECORDS,
             delete_records_request::VERSION,
             delete_records_response(),
         )
@@ -391,7 +391,7 @@ where
     ) -> io::Result<DeleteTopicsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::DeleteTopics,
+            ApiKey::DELETE_TOPICS,
             delete_topics_request::VERSION,
             delete_topics_response(),
         )
@@ -403,7 +403,7 @@ where
     ) -> io::Result<DescribeAclsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::DescribeAcls,
+            ApiKey::DESCRIBE_ACLS,
             describe_acls_request::VERSION,
             describe_acls_response(),
         )
@@ -415,7 +415,7 @@ where
     ) -> io::Result<DescribeConfigsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::DescribeConfigs,
+            ApiKey::DESCRIBE_CONFIGS,
             describe_configs_request::VERSION,
             describe_configs_response(),
         )
@@ -427,7 +427,7 @@ where
     ) -> io::Result<DescribeDelegationTokenResponse<'i>> where {
         self.call(
             request,
-            ApiKey::DescribeDelegationToken,
+            ApiKey::DESCRIBE_DELEGATION_TOKEN,
             describe_delegation_token_request::VERSION,
             describe_delegation_token_response(),
         )
@@ -439,7 +439,7 @@ where
     ) -> io::Result<DescribeGroupsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::DescribeGroups,
+            ApiKey::DESCRIBE_GROUPS,
             describe_groups_request::VERSION,
             describe_groups_response(),
         )
@@ -451,7 +451,7 @@ where
     ) -> io::Result<DescribeLogDirsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::DescribeLogDirs,
+            ApiKey::DESCRIBE_LOG_DIRS,
             describe_log_dirs_request::VERSION,
             describe_log_dirs_response(),
         )
@@ -463,7 +463,7 @@ where
     ) -> io::Result<ElectPreferredLeadersResponse<'i>> where {
         self.call(
             request,
-            ApiKey::ElectPreferredLeaders,
+            ApiKey::ELECT_PREFERRED_LEADERS,
             elect_preferred_leaders_request::VERSION,
             elect_preferred_leaders_response(),
         )
@@ -475,7 +475,7 @@ where
     ) -> io::Result<EndTxnResponse> where {
         self.call(
             request,
-            ApiKey::EndTxn,
+            ApiKey::END_TXN,
             end_txn_request::VERSION,
             end_txn_response(),
         )
@@ -487,7 +487,7 @@ where
     ) -> io::Result<ExpireDelegationTokenResponse> where {
         self.call(
             request,
-            ApiKey::ExpireDelegationToken,
+            ApiKey::EXPIRE_DELEGATION_TOKEN,
             expire_delegation_token_request::VERSION,
             expire_delegation_token_response(),
         )
@@ -502,7 +502,7 @@ where
     {
         self.call(
             request,
-            ApiKey::Fetch,
+            ApiKey::FETCH,
             fetch_request::VERSION,
             fetch_response(),
         )
@@ -514,7 +514,7 @@ where
     ) -> io::Result<FindCoordinatorResponse<'i>> where {
         self.call(
             request,
-            ApiKey::FindCoordinator,
+            ApiKey::FIND_COORDINATOR,
             find_coordinator_request::VERSION,
             find_coordinator_response(),
         )
@@ -526,7 +526,7 @@ where
     ) -> io::Result<HeartbeatResponse> where {
         self.call(
             request,
-            ApiKey::Heartbeat,
+            ApiKey::HEARTBEAT,
             heartbeat_request::VERSION,
             heartbeat_response(),
         )
@@ -538,7 +538,7 @@ where
     ) -> io::Result<IncrementalAlterConfigsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::IncrementalAlterConfigs,
+            ApiKey::INCREMENTAL_ALTER_CONFIGS,
             incremental_alter_configs_request::VERSION,
             incremental_alter_configs_response(),
         )
@@ -550,7 +550,7 @@ where
     ) -> io::Result<InitProducerIdResponse> where {
         self.call(
             request,
-            ApiKey::InitProducerId,
+            ApiKey::INIT_PRODUCER_ID,
             init_producer_id_request::VERSION,
             init_producer_id_response(),
         )
@@ -562,7 +562,7 @@ where
     ) -> io::Result<JoinGroupResponse<'i>> where {
         self.call(
             request,
-            ApiKey::JoinGroup,
+            ApiKey::JOIN_GROUP,
             join_group_request::VERSION,
             join_group_response(),
         )
@@ -574,7 +574,7 @@ where
     ) -> io::Result<LeaderAndIsrResponse<'i>> where {
         self.call(
             request,
-            ApiKey::LeaderAndIsr,
+            ApiKey::LEADER_AND_ISR,
             leader_and_isr_request::VERSION,
             leader_and_isr_response(),
         )
@@ -586,7 +586,7 @@ where
     ) -> io::Result<LeaveGroupResponse> where {
         self.call(
             request,
-            ApiKey::LeaveGroup,
+            ApiKey::LEAVE_GROUP,
             leave_group_request::VERSION,
             leave_group_response(),
         )
@@ -598,7 +598,7 @@ where
     ) -> io::Result<ListGroupsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::ListGroups,
+            ApiKey::LIST_GROUPS,
             list_groups_request::VERSION,
             list_groups_response(),
         )
@@ -610,7 +610,7 @@ where
     ) -> io::Result<ListOffsetsResponse<'i>> where {
         self.call(
             request,
-            ApiKey::ListOffsets,
+            ApiKey::LIST_OFFSETS,
             list_offsets_request::VERSION,
             list_offsets_response(),
         )
@@ -622,7 +622,7 @@ where
     ) -> io::Result<MetadataResponse<'i>> where {
         self.call(
             request,
-            ApiKey::Metadata,
+            ApiKey::METADATA,
             metadata_request::VERSION,
             metadata_response(),
         )
@@ -634,7 +634,7 @@ where
     ) -> io::Result<OffsetCommitResponse<'i>> where {
         self.call(
             request,
-            ApiKey::OffsetCommit,
+            ApiKey::OFFSET_COMMIT,
             offset_commit_request::VERSION,
             offset_commit_response(),
         )
@@ -646,7 +646,7 @@ where
     ) -> io::Result<OffsetFetchResponse<'i>> where {
         self.call(
             request,
-            ApiKey::OffsetFetch,
+            ApiKey::OFFSET_FETCH,
             offset_fetch_request::VERSION,
             offset_fetch_response(),
         )
@@ -658,7 +658,7 @@ where
     ) -> io::Result<OffsetForLeaderEpochResponse<'i>> where {
         self.call(
             request,
-            ApiKey::OffsetForLeaderEpoch,
+            ApiKey::OFFSET_FOR_LEADER_EPOCH,
             offset_for_leader_epoch_request::VERSION,
             offset_for_leader_epoch_response(),
         )
@@ -673,7 +673,7 @@ where
     {
         self.call(
             request,
-            ApiKey::Produce,
+            ApiKey::PRODUCE,
             produce_request::VERSION,
             produce_response(),
         )
@@ -685,7 +685,7 @@ where
     ) -> io::Result<RenewDelegationTokenResponse> where {
         self.call(
             request,
-            ApiKey::RenewDelegationToken,
+            ApiKey::RENEW_DELEGATION_TOKEN,
             renew_delegation_token_request::VERSION,
             renew_delegation_token_response(),
         )
@@ -697,7 +697,7 @@ where
     ) -> io::Result<SaslAuthenticateResponse<'i>> where {
         self.call(
             request,
-            ApiKey::SaslAuthenticate,
+            ApiKey::SASL_AUTHENTICATE,
             sasl_authenticate_request::VERSION,
             sasl_authenticate_response(),
         )
@@ -709,7 +709,7 @@ where
     ) -> io::Result<SaslHandshakeResponse<'i>> where {
         self.call(
             request,
-            ApiKey::SaslHandshake,
+            ApiKey::SASL_HANDSHAKE,
             sasl_handshake_request::VERSION,
             sasl_handshake_response(),
         )
@@ -721,7 +721,7 @@ where
     ) -> io::Result<StopReplicaResponse<'i>> where {
         self.call(
             request,
-            ApiKey::StopReplica,
+            ApiKey::STOP_REPLICA,
             stop_replica_request::VERSION,
             stop_replica_response(),
         )
@@ -733,7 +733,7 @@ where
     ) -> io::Result<SyncGroupResponse<'i>> where {
         self.call(
             request,
-            ApiKey::SyncGroup,
+            ApiKey::SYNC_GROUP,
             sync_group_request::VERSION,
             sync_group_response(),
         )
@@ -745,7 +745,7 @@ where
     ) -> io::Result<TxnOffsetCommitResponse<'i>> where {
         self.call(
             request,
-            ApiKey::TxnOffsetCommit,
+            ApiKey::TXN_OFFSET_COMMIT,
             txn_offset_commit_request::VERSION,
             txn_offset_commit_response(),
         )
@@ -757,7 +757,7 @@ where
     ) -> io::Result<UpdateMetadataResponse> where {
         self.call(
             request,
-            ApiKey::UpdateMetadata,
+            ApiKey::UPDATE_METADATA,
             update_metadata_request::VERSION,
             update_metadata_response(),
         )
@@ -769,7 +769,7 @@ where
     ) -> io::Result<WriteTxnMarkersResponse<'i>> where {
         self.call(
             request,
-            ApiKey::WriteTxnMarkers,
+            ApiKey::WRITE_TXN_MARKERS,
             write_txn_markers_request::VERSION,
             write_txn_markers_response(),
         )

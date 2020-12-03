@@ -182,7 +182,7 @@ mod regenerate {
         fn generate_parser<'i>(&self, arena: Arena<'i>) -> DocBuilder<'i> {
             match self {
                 Type::ErrorCode => arena.text("be_i16().and_then(|i| ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))"),
-                Type::ApiKey =>  arena.text("be_i16().and_then(|i| ApiKey::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))"),
+                Type::ApiKey =>  arena.text("be_i16().map(|i| ApiKey::from(i))"),
                 Type::Acks => arena.text("be_i16().and_then(|i| Acks::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message))"),
                 Type::Int(s) => arena.text(format!(
                     "be_i{}()",
@@ -944,6 +944,8 @@ where
             .filter_map(|(call, (request, response))| Some((call, request?, response?)))
         {
             let base_type_name = call.replace(" ", "");
+            let api_key =
+                inflector::cases::screamingsnakecase::to_screaming_snake_case(&base_type_name);
             let name = inflector::cases::snakecase::to_snake_case(&base_type_name);
 
             writeln!(
@@ -966,7 +968,7 @@ where
                     )
                     .format(" ")
             )?;
-            writeln!(parser_out, "    self.call(request, ApiKey::{base_type_name}, {name}_request::VERSION, {name}_response()).await", name = name, base_type_name = base_type_name)?;
+            writeln!(parser_out, "    self.call(request, ApiKey::{api_key}, {name}_request::VERSION, {name}_response()).await", name = name, api_key = api_key)?;
             writeln!(parser_out, "}}")?;
         }
         writeln!(parser_out, "}}")?;
@@ -1034,26 +1036,22 @@ where
                 })
             };
 
-            writeln!(out, "use std::convert::TryFrom;")?;
             writeln!(out, "#[derive(Clone, Copy, Eq, PartialEq, Debug)]")?;
-            writeln!(out, "pub enum ApiKey {{")?;
+            writeln!(out, "pub struct ApiKey(pub i16);")?;
+            writeln!(out, "impl ApiKey {{")?;
             for (name, number) in iter() {
-                writeln!(out, "    {name} = {number},", name = name, number = number)?;
+                writeln!(
+                    out,
+                    "    pub const {name}: ApiKey = ApiKey({number});",
+                    name = inflector::cases::screamingsnakecase::to_screaming_snake_case(name),
+                    number = number
+                )?;
             }
             writeln!(out, "}}")?;
 
-            writeln!(out, "impl TryFrom<i16> for ApiKey {{")?;
-            writeln!(out, "    type Error = &'static str;")?;
-            writeln!(
-                out,
-                "    fn try_from(i: i16) -> Result<Self, Self::Error> {{"
-            )?;
-            writeln!(out, "        Ok(match i {{")?;
-            for (name, number) in iter() {
-                writeln!(out, "            {} => ApiKey::{},", number, name)?;
-            }
-            writeln!(out, r#"            _ => return Err("Invalid ApiKey")"#)?;
-            writeln!(out, "        }})")?;
+            writeln!(out, "impl From<i16> for ApiKey {{")?;
+            writeln!(out, "    fn from(i: i16) -> Self {{")?;
+            writeln!(out, "        ApiKey(i)")?;
             writeln!(out, "    }}")?;
             writeln!(out, "}}")?;
         }

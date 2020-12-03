@@ -1,102 +1,54 @@
-use std::convert::TryFrom;
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
-pub enum ApiKey {
-    Produce = 0,
-    Fetch = 1,
-    ListOffsets = 2,
-    Metadata = 3,
-    LeaderAndIsr = 4,
-    StopReplica = 5,
-    UpdateMetadata = 6,
-    ControlledShutdown = 7,
-    OffsetCommit = 8,
-    OffsetFetch = 9,
-    FindCoordinator = 10,
-    JoinGroup = 11,
-    Heartbeat = 12,
-    LeaveGroup = 13,
-    SyncGroup = 14,
-    DescribeGroups = 15,
-    ListGroups = 16,
-    SaslHandshake = 17,
-    ApiVersions = 18,
-    CreateTopics = 19,
-    DeleteTopics = 20,
-    DeleteRecords = 21,
-    InitProducerId = 22,
-    OffsetForLeaderEpoch = 23,
-    AddPartitionsToTxn = 24,
-    AddOffsetsToTxn = 25,
-    EndTxn = 26,
-    WriteTxnMarkers = 27,
-    TxnOffsetCommit = 28,
-    DescribeAcls = 29,
-    CreateAcls = 30,
-    DeleteAcls = 31,
-    DescribeConfigs = 32,
-    AlterConfigs = 33,
-    AlterReplicaLogDirs = 34,
-    DescribeLogDirs = 35,
-    SaslAuthenticate = 36,
-    CreatePartitions = 37,
-    CreateDelegationToken = 38,
-    RenewDelegationToken = 39,
-    ExpireDelegationToken = 40,
-    DescribeDelegationToken = 41,
-    DeleteGroups = 42,
-    ElectPreferredLeaders = 43,
-    IncrementalAlterConfigs = 44,
+pub struct ApiKey(pub i16);
+impl ApiKey {
+    pub const PRODUCE: ApiKey = ApiKey(0);
+    pub const FETCH: ApiKey = ApiKey(1);
+    pub const LIST_OFFSETS: ApiKey = ApiKey(2);
+    pub const METADATA: ApiKey = ApiKey(3);
+    pub const LEADER_AND_ISR: ApiKey = ApiKey(4);
+    pub const STOP_REPLICA: ApiKey = ApiKey(5);
+    pub const UPDATE_METADATA: ApiKey = ApiKey(6);
+    pub const CONTROLLED_SHUTDOWN: ApiKey = ApiKey(7);
+    pub const OFFSET_COMMIT: ApiKey = ApiKey(8);
+    pub const OFFSET_FETCH: ApiKey = ApiKey(9);
+    pub const FIND_COORDINATOR: ApiKey = ApiKey(10);
+    pub const JOIN_GROUP: ApiKey = ApiKey(11);
+    pub const HEARTBEAT: ApiKey = ApiKey(12);
+    pub const LEAVE_GROUP: ApiKey = ApiKey(13);
+    pub const SYNC_GROUP: ApiKey = ApiKey(14);
+    pub const DESCRIBE_GROUPS: ApiKey = ApiKey(15);
+    pub const LIST_GROUPS: ApiKey = ApiKey(16);
+    pub const SASL_HANDSHAKE: ApiKey = ApiKey(17);
+    pub const API_VERSIONS: ApiKey = ApiKey(18);
+    pub const CREATE_TOPICS: ApiKey = ApiKey(19);
+    pub const DELETE_TOPICS: ApiKey = ApiKey(20);
+    pub const DELETE_RECORDS: ApiKey = ApiKey(21);
+    pub const INIT_PRODUCER_ID: ApiKey = ApiKey(22);
+    pub const OFFSET_FOR_LEADER_EPOCH: ApiKey = ApiKey(23);
+    pub const ADD_PARTITIONS_TO_TXN: ApiKey = ApiKey(24);
+    pub const ADD_OFFSETS_TO_TXN: ApiKey = ApiKey(25);
+    pub const END_TXN: ApiKey = ApiKey(26);
+    pub const WRITE_TXN_MARKERS: ApiKey = ApiKey(27);
+    pub const TXN_OFFSET_COMMIT: ApiKey = ApiKey(28);
+    pub const DESCRIBE_ACLS: ApiKey = ApiKey(29);
+    pub const CREATE_ACLS: ApiKey = ApiKey(30);
+    pub const DELETE_ACLS: ApiKey = ApiKey(31);
+    pub const DESCRIBE_CONFIGS: ApiKey = ApiKey(32);
+    pub const ALTER_CONFIGS: ApiKey = ApiKey(33);
+    pub const ALTER_REPLICA_LOG_DIRS: ApiKey = ApiKey(34);
+    pub const DESCRIBE_LOG_DIRS: ApiKey = ApiKey(35);
+    pub const SASL_AUTHENTICATE: ApiKey = ApiKey(36);
+    pub const CREATE_PARTITIONS: ApiKey = ApiKey(37);
+    pub const CREATE_DELEGATION_TOKEN: ApiKey = ApiKey(38);
+    pub const RENEW_DELEGATION_TOKEN: ApiKey = ApiKey(39);
+    pub const EXPIRE_DELEGATION_TOKEN: ApiKey = ApiKey(40);
+    pub const DESCRIBE_DELEGATION_TOKEN: ApiKey = ApiKey(41);
+    pub const DELETE_GROUPS: ApiKey = ApiKey(42);
+    pub const ELECT_PREFERRED_LEADERS: ApiKey = ApiKey(43);
+    pub const INCREMENTAL_ALTER_CONFIGS: ApiKey = ApiKey(44);
 }
-impl TryFrom<i16> for ApiKey {
-    type Error = &'static str;
-    fn try_from(i: i16) -> Result<Self, Self::Error> {
-        Ok(match i {
-            0 => ApiKey::Produce,
-            1 => ApiKey::Fetch,
-            2 => ApiKey::ListOffsets,
-            3 => ApiKey::Metadata,
-            4 => ApiKey::LeaderAndIsr,
-            5 => ApiKey::StopReplica,
-            6 => ApiKey::UpdateMetadata,
-            7 => ApiKey::ControlledShutdown,
-            8 => ApiKey::OffsetCommit,
-            9 => ApiKey::OffsetFetch,
-            10 => ApiKey::FindCoordinator,
-            11 => ApiKey::JoinGroup,
-            12 => ApiKey::Heartbeat,
-            13 => ApiKey::LeaveGroup,
-            14 => ApiKey::SyncGroup,
-            15 => ApiKey::DescribeGroups,
-            16 => ApiKey::ListGroups,
-            17 => ApiKey::SaslHandshake,
-            18 => ApiKey::ApiVersions,
-            19 => ApiKey::CreateTopics,
-            20 => ApiKey::DeleteTopics,
-            21 => ApiKey::DeleteRecords,
-            22 => ApiKey::InitProducerId,
-            23 => ApiKey::OffsetForLeaderEpoch,
-            24 => ApiKey::AddPartitionsToTxn,
-            25 => ApiKey::AddOffsetsToTxn,
-            26 => ApiKey::EndTxn,
-            27 => ApiKey::WriteTxnMarkers,
-            28 => ApiKey::TxnOffsetCommit,
-            29 => ApiKey::DescribeAcls,
-            30 => ApiKey::CreateAcls,
-            31 => ApiKey::DeleteAcls,
-            32 => ApiKey::DescribeConfigs,
-            33 => ApiKey::AlterConfigs,
-            34 => ApiKey::AlterReplicaLogDirs,
-            35 => ApiKey::DescribeLogDirs,
-            36 => ApiKey::SaslAuthenticate,
-            37 => ApiKey::CreatePartitions,
-            38 => ApiKey::CreateDelegationToken,
-            39 => ApiKey::RenewDelegationToken,
-            40 => ApiKey::ExpireDelegationToken,
-            41 => ApiKey::DescribeDelegationToken,
-            42 => ApiKey::DeleteGroups,
-            43 => ApiKey::ElectPreferredLeaders,
-            44 => ApiKey::IncrementalAlterConfigs,
-            _ => return Err("Invalid ApiKey"),
-        })
+impl From<i16> for ApiKey {
+    fn from(i: i16) -> Self {
+        ApiKey(i)
     }
 }

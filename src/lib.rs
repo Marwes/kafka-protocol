@@ -332,8 +332,17 @@ macro_rules! encode_as {
     )* }
 }
 
+impl Encode for ApiKey {
+    fn encode_len(&self) -> usize {
+        mem::size_of::<i16>()
+    }
+
+    fn encode(&self, writer: &mut impl Buffer) {
+        self.0.encode(writer);
+    }
+}
+
 encode_as! {
-    ApiKey as i16,
     ErrorCode as i16,
     Acks as i16,
 }

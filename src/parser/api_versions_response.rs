@@ -12,11 +12,7 @@ where
             .expected("error_code"),
         array(|| {
             (
-                be_i16()
-                    .and_then(|i| {
-                        ApiKey::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)
-                    })
-                    .expected("api_key"),
+                be_i16().map(|i| ApiKey::from(i)).expected("api_key"),
                 be_i16().expected("min_version"),
                 be_i16().expected("max_version"),
             )
