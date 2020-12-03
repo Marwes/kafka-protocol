@@ -170,6 +170,7 @@ mod tests {
     #[tokio::test]
     async fn produce_and_fetch() {
         let _ = env_logger::try_init();
+        let _lock = KAFKA_LOCK.lock();
 
         let mut producer = Producer::connect(kafka_host()).await.unwrap();
 

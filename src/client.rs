@@ -6,7 +6,7 @@ use {
     tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
 };
 
-use crate::{api_key::ApiKey, reserve, Encode};
+use crate::{api_key::ApiKey, reserve, Encode, Result};
 
 pub struct Client<I> {
     io: I,
@@ -34,7 +34,7 @@ where
         api_key: ApiKey,
         api_version: i16,
         mut parser: P,
-    ) -> io::Result<O>
+    ) -> Result<O>
     where
         R: Encode,
         P: EasyParser<&'i [u8], Output = O>,
@@ -71,7 +71,8 @@ where
                 return Err(io::Error::new(
                     io::ErrorKind::UnexpectedEof,
                     "Unable to read enough bytes for response length",
-                ));
+                )
+                .into());
             }
         }
 
@@ -86,7 +87,8 @@ where
                 return Err(io::Error::new(
                     io::ErrorKind::UnexpectedEof,
                     "Unable to read enough bytes for response",
-                ));
+                )
+                .into());
             }
         }
 
@@ -94,9 +96,10 @@ where
             .parse(&self.buf[mem::size_of::<i32>()..])
             .expect("Invalid header");
         log::trace!("Response rest: {}", rest.len());
-        let (response, rest) = parser
-            .easy_parse(rest)
-            .unwrap_or_else(|err| panic!("Invalid response {:?}", err));
+        let (response, rest) = parser.easy_parse(rest).map_err(|err| {
+            err.map_position(|p| p.translate_position(rest))
+                .map_range(|r| format!("{:?}", r))
+        })?;
         assert!(
             rest.is_empty(),
             "{} bytes remaining in response: {:?}",
@@ -115,6 +118,10 @@ pub(crate) mod tests {
     use std::{str, time::Duration};
 
     use crate::{parser::*, Acks, ErrorCode, Record, RecordBatch, FETCH_LATEST_OFFSET};
+
+    use once_cell::sync::Lazy;
+    use std::sync::Mutex;
+    pub static KAFKA_LOCK: Lazy<Mutex<()>> = Lazy::new(Mutex::default);
 
     pub fn kafka_host() -> String {
         std::str::from_utf8(
@@ -244,6 +251,7 @@ pub(crate) mod tests {
     #[tokio::test]
     async fn produce() {
         let _ = env_logger::try_init();
+        let _lock = KAFKA_LOCK.lock();
 
         let mut client = Client::connect(kafka_host()).await.unwrap();
 
@@ -255,6 +263,8 @@ pub(crate) mod tests {
     #[tokio::test]
     async fn fetch() {
         let _ = env_logger::try_init();
+
+        let _lock = KAFKA_LOCK.lock();
 
         let mut client = Client::connect(kafka_host()).await.unwrap();
 

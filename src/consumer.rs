@@ -5,7 +5,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use crate::{
     client::Client,
     parser::{FetchRequest, FetchResponse},
-    Record,
+    Record, Result,
 };
 
 pub struct Consumer<I> {
@@ -29,7 +29,7 @@ where
     pub async fn fetch<'a>(
         &'a mut self,
         topics: impl IntoIterator<Item = &'a str>,
-    ) -> io::Result<FetchResponse<'a, Vec<Record<'a>>>> {
+    ) -> Result<FetchResponse<'a, Vec<Record<'a>>>> {
         let fetch_offset = self.fetch_offset;
         self.client
             .fetch(FetchRequest {

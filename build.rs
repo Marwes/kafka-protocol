@@ -950,7 +950,7 @@ where
 
             writeln!(
                 parser_out,
-                "pub async fn {name}<'i{ty_params}>(&'i mut self, request: {base_type_name}Request{request_lt}) -> io::Result<{base_type_name}Response{response_lt}> where {where_bounds} {{",
+                "pub async fn {name}<'i{ty_params}>(&'i mut self, request: {base_type_name}Request{request_lt}) -> Result<{base_type_name}Response{response_lt}> where {where_bounds} {{",
                 name = name,
                 ty_params = request.needed_params()
                     .iter().chain(response.needed_params().iter())

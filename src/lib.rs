@@ -33,6 +33,10 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 quick_error! {
     #[derive(Debug)]
     pub enum Error {
+        Parse(err: combine::easy::Errors<u8, String, usize>) {
+            display("{}", err)
+            from()
+        }
         Io(err: io::Error) {
             display("{}", err)
             from()
