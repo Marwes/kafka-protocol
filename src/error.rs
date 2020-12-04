@@ -168,6 +168,18 @@ pub enum ErrorCode {
     GroupMaxSizeReached = 81,
     /// The broker rejected this static consumer since another consumer with the same group.instance.id has registered with a different member.id.
     FencedInstanceId = 82,
+    /// Eligible topic partition leaders are not available.
+    EligibleLeadersNotAvailable = 83,
+    /// Leader election not needed for topic partition.
+    ElectionNotNeeded = 84,
+    /// No partition reassignment is in progress.
+    NoReassignmentInProgress = 85,
+    /// Deleting offsets of a topic is forbidden while the consumer group is actively subscribed to it.
+    GroupSubscribedToTopic = 86,
+    /// This record has failed the validation on broker and hence will be rejected.
+    InvalidRecord = 87,
+    /// There are unstable offsets that need to be cleared.
+    UnstableOffsetCommit = 88,
 }
 impl TryFrom<i16> for ErrorCode {
     type Error = &'static str;
@@ -257,6 +269,12 @@ impl TryFrom<i16> for ErrorCode {
             80 => ErrorCode::PreferredLeaderNotAvailable,
             81 => ErrorCode::GroupMaxSizeReached,
             82 => ErrorCode::FencedInstanceId,
+            83 => ErrorCode::EligibleLeadersNotAvailable,
+            84 => ErrorCode::ElectionNotNeeded,
+            85 => ErrorCode::NoReassignmentInProgress,
+            86 => ErrorCode::GroupSubscribedToTopic,
+            87 => ErrorCode::InvalidRecord,
+            88 => ErrorCode::UnstableOffsetCommit,
             _ => return Err("Invalid ErrorCode"),
         })
     }
