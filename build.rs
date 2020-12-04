@@ -32,18 +32,19 @@ mod regenerate {
     producerId => int64
     producerEpoch => int16
     baseSequence => int32
-    records => [Record]
-        Record => length attributes timestampDelta offsetDelta key value Headers
-            length => varint
-            attributes => int8
-            timestampDelta => varint
-            offsetDelta => varint
-            key => varbytes
-            value => varbytes
-            Headers => [:Header]
-                Header => headerKey Value
-                    headerKey => varstring
-                    Value => varbytes"#;
+    records => RECORDS"#;
+
+    const RECORDS_DEF: &str = r#"Record => length attributes timestampDelta offsetDelta key value Headers
+    length => varint
+    attributes => int8
+    timestampDelta => varint
+    offsetDelta => varint
+    key => varbytes
+    value => varbytes
+    Headers => [:Header]
+        Header => headerKey Value
+            headerKey => varstring
+            Value => varbytes"#;
 
     macro_rules! chain {
         ($alloc: expr, $first: expr, $($rest: expr),* $(,)?) => {{
@@ -270,7 +271,7 @@ mod regenerate {
             Type::Bool => "bool".into(),
             Type::Array => TyDef::with_lifetime("&'i [u8]"),
             Type::Records => TyDef {
-                name: "Option<RecordBatch<R>>".into(),
+                name: "R".into(),
                 params: &[Param {
                     name: "R",
                     default: "", // "Vec<Record<'i>>",
@@ -865,6 +866,7 @@ mod regenerate {
             .iter()
             .map(|s| s.as_str())
             .chain(Some(RECORD_DEF))
+            .chain(Some(RECORDS_DEF))
             .enumerate()
             .map(|(_, input)| -> io::Result<_> {
                 // eprintln!("Input {}: {}", i, input);

@@ -225,6 +225,8 @@ pub use self::incremental_alter_configs_response::{
 };
 pub mod record_set;
 pub use self::record_set::{record_set, RecordSet};
+pub mod record;
+pub use self::record::{record, Record};
 impl<I> Client<I>
 where
     I: AsyncRead + AsyncWrite + std::marker::Unpin,

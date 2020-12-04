@@ -71,7 +71,7 @@ pub const VERSION: i16 = 7;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Data<R> {
     pub partition: i32,
-    pub record_set: Option<RecordBatch<R>>,
+    pub record_set: R,
 }
 
 impl<R> crate::Encode for Data<R>

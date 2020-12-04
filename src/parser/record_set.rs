@@ -1,5 +1,6 @@
 use super::*;
-pub fn record_set<'i, I>() -> impl Parser<I, Output = RecordSet<'i>> + 'i
+pub fn record_set<'i, R: RecordBatchParser<I> + 'i, I>(
+) -> impl Parser<I, Output = RecordSet<R>> + 'i
 where
     I: RangeStream<Token = u8, Range = &'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
@@ -17,38 +18,7 @@ where
         be_i64().expected("producerId"),
         be_i16().expected("producerEpoch"),
         be_i32().expected("baseSequence"),
-        array(|| {
-            (
-                varint().expected("length"),
-                be_i8().expected("attributes"),
-                varint().expected("timestampDelta"),
-                varint().expected("offsetDelta"),
-                varbytes().expected("key"),
-                varbytes().expected("value"),
-                vararray(|| {
-                    (
-                        varstring().expected("headerKey"),
-                        varbytes().expected("Value"),
-                    )
-                        .map(|(header_key, value)| Header { header_key, value })
-                        .expected("Headers")
-                }),
-            )
-                .map(
-                    |(length, attributes, timestamp_delta, offset_delta, key, value, headers)| {
-                        Record {
-                            length,
-                            attributes,
-                            timestamp_delta,
-                            offset_delta,
-                            key,
-                            value,
-                            headers,
-                        }
-                    },
-                )
-                .expected("records")
-        }),
+        R::parser().expected("records"),
     )
         .map(
             |(
@@ -86,7 +56,7 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct RecordSet<'i> {
+pub struct RecordSet<R> {
     pub base_offset: i64,
     pub batch_length: i32,
     pub partition_leader_epoch: i32,
@@ -99,10 +69,13 @@ pub struct RecordSet<'i> {
     pub producer_id: i64,
     pub producer_epoch: i16,
     pub base_sequence: i32,
-    pub records: Vec<Record<'i>>,
+    pub records: R,
 }
 
-impl<'i> crate::Encode for RecordSet<'i> {
+impl<R> crate::Encode for RecordSet<R>
+where
+    R: Encode,
+{
     fn encode_len(&self) -> usize {
         self.base_offset.encode_len()
             + self.batch_length.encode_len()
@@ -132,53 +105,5 @@ impl<'i> crate::Encode for RecordSet<'i> {
         self.producer_epoch.encode(writer);
         self.base_sequence.encode(writer);
         self.records.encode(writer);
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Header<'i> {
-    pub header_key: &'i str,
-    pub value: &'i [u8],
-}
-
-impl<'i> crate::Encode for Header<'i> {
-    fn encode_len(&self) -> usize {
-        self.header_key.encode_len() + self.value.encode_len()
-    }
-    fn encode(&self, writer: &mut impl Buffer) {
-        self.header_key.encode(writer);
-        self.value.encode(writer);
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Record<'i> {
-    pub length: i32,
-    pub attributes: i8,
-    pub timestamp_delta: i32,
-    pub offset_delta: i32,
-    pub key: &'i [u8],
-    pub value: &'i [u8],
-    pub headers: Vec<Header<'i>>,
-}
-
-impl<'i> crate::Encode for Record<'i> {
-    fn encode_len(&self) -> usize {
-        self.length.encode_len()
-            + self.attributes.encode_len()
-            + self.timestamp_delta.encode_len()
-            + self.offset_delta.encode_len()
-            + self.key.encode_len()
-            + self.value.encode_len()
-            + self.headers.encode_len()
-    }
-    fn encode(&self, writer: &mut impl Buffer) {
-        self.length.encode(writer);
-        self.attributes.encode(writer);
-        self.timestamp_delta.encode(writer);
-        self.offset_delta.encode(writer);
-        self.key.encode(writer);
-        self.value.encode(writer);
-        self.headers.encode(writer);
     }
 }

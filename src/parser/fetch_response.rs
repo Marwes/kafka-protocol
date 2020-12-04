@@ -168,7 +168,7 @@ impl crate::Encode for PartitionHeader {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartitionResponses<R> {
     pub partition_header: PartitionHeader,
-    pub record_set: Option<RecordBatch<R>>,
+    pub record_set: R,
 }
 
 impl<R> crate::Encode for PartitionResponses<R>

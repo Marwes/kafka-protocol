@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, io, mem, str, time::Duration};
+use std::{convert::TryFrom, fmt, io, mem, str, time::Duration};
 
 use {
     bytes::Buf,
@@ -7,7 +7,7 @@ use {
         parser::{
             byte::num::{be_i16, be_i32, be_i64},
             range,
-            token::{any, position, value},
+            token::{any, value},
         },
         stream::StreamErrorFor,
         Parser, RangeStream,
@@ -39,6 +39,10 @@ quick_error! {
         }
         Io(err: io::Error) {
             display("{}", err)
+            from()
+        }
+        Message(msg: String) {
+            display("{}", msg)
             from()
         }
         InvalidTimeout(dur: Duration) {
@@ -398,9 +402,73 @@ pub struct RecordHeader<'i> {
 pub type OwnedRecordBatch<'i> = RecordBatch<Vec<Record<'i>>>;
 
 impl<'i> OwnedRecordBatch<'i> {
+    fn verify_owned<I>(
+        range: &[u8],
+        record_set: crate::parser::RecordSet<Vec<crate::parser::record::Record<'i>>>,
+    ) -> Result<Self, StreamErrorFor<I>>
+    where
+        I: RangeStream,
+    {
+        let batch = RecordBatch::verify::<I>(range, record_set)?;
+        let RecordBatch {
+            base_offset,
+            partition_leader_epoch,
+            attributes,
+            last_offset_delta,
+            first_timestamp,
+            max_timestamp,
+            producer_id,
+            producer_epoch,
+            base_sequence,
+            records,
+        } = batch;
+
+        Ok(RecordBatch {
+            base_offset,
+            partition_leader_epoch,
+            attributes,
+            last_offset_delta,
+            first_timestamp,
+            max_timestamp,
+            producer_id,
+            producer_epoch,
+            base_sequence,
+            records: records
+                .into_iter()
+                .map(|r| {
+                    let crate::parser::record::Record {
+                        length: _,
+                        attributes,
+                        timestamp_delta,
+                        offset_delta,
+                        key,
+                        value,
+                        headers,
+                    } = r;
+                    Record {
+                        attributes,
+                        timestamp_delta,
+                        offset_delta,
+                        key,
+                        value,
+                        headers: headers
+                            .into_iter()
+                            .map(|header| RecordHeader {
+                                key: header.header_key,
+                                value: header.value,
+                            })
+                            .collect(),
+                    }
+                })
+                .collect(),
+        })
+    }
+}
+
+impl<R> RecordBatch<R> {
     fn verify<I>(
         range: &[u8],
-        record_set: crate::parser::RecordSet<'i>,
+        record_set: crate::parser::RecordSet<R>,
     ) -> Result<Self, StreamErrorFor<I>>
     where
         I: RangeStream,
@@ -445,45 +513,19 @@ impl<'i> OwnedRecordBatch<'i> {
             producer_id,
             producer_epoch,
             base_sequence,
-            records: records
-                .into_iter()
-                .map(|r| {
-                    let crate::parser::record_set::Record {
-                        length: _,
-                        attributes,
-                        timestamp_delta,
-                        offset_delta,
-                        key,
-                        value,
-                        headers,
-                    } = r;
-                    Record {
-                        attributes,
-                        timestamp_delta,
-                        offset_delta,
-                        key,
-                        value,
-                        headers: headers
-                            .into_iter()
-                            .map(|header| RecordHeader {
-                                key: header.header_key,
-                                value: header.value,
-                            })
-                            .collect(),
-                    }
-                })
-                .collect(),
+            records,
         })
     }
 }
 
-fn record_batch<'i, I>() -> impl Parser<I, Output = Option<OwnedRecordBatch<'i>>>
+type RawRecordBatch<'i> = RecordBatch<RawRecords<'i>>;
+fn raw_record_batch<'i, I>() -> impl Parser<I, Output = Option<RawRecordBatch<'i>>>
 where
-    I: RangeStream<Token = u8, Range = &'i [u8]>,
+    I: RangeStream<Token = u8, Range = &'i [u8]> + From<&'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    (position(), nullable_bytes())
-        .flat_map(|(position, bytes)| match bytes {
+    nullable_bytes()
+        .flat_map(|bytes| match bytes {
             Some(bytes) if !bytes.is_empty() => {
                 let attributes = RecordBatchAttributes(
                     (&bytes[mem::size_of::<i64>()
@@ -498,13 +540,8 @@ where
                     log::trace!("Control batch");
                 }
 
-                let (value, rest) = crate::parser::record_set().parse(bytes).map_err(|_| {
-                    I::Error::from_error(
-                        position,
-                        StreamErrorFor::<I>::message_static_message("Unable to parse RecordSet"),
-                    )
-                })?;
-                debug_assert!(rest.is_empty(), "{:#?} {:?}", value, rest);
+                let (value, _rest) = crate::parser::record_set().parse(I::from(bytes))?;
+                // debug_assert!(rest.is_empty(), "{:#?} {:?}", value, rest);
                 log::trace!("Parsed record_set: {:#?}", value);
 
                 Ok(Some((bytes, value)))
@@ -513,6 +550,43 @@ where
         })
         .and_then(|opt| match opt {
             Some((range, record_set)) => RecordBatch::verify::<I>(range, record_set).map(Some),
+            None => Ok(None),
+        })
+}
+
+fn record_batch<'i, I>() -> impl Parser<I, Output = Option<OwnedRecordBatch<'i>>>
+where
+    I: RangeStream<Token = u8, Range = &'i [u8]> + From<&'i [u8]> + 'i,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
+{
+    nullable_bytes()
+        .flat_map(|bytes| match bytes {
+            Some(bytes) if !bytes.is_empty() => {
+                let attributes = RecordBatchAttributes(
+                    (&bytes[mem::size_of::<i64>()
+                        + mem::size_of::<i32>()
+                        + mem::size_of::<i32>()
+                        + mem::size_of::<i8>()
+                        + mem::size_of::<i32>()..])
+                        .get_i16(),
+                );
+
+                if attributes.is_control_batch() {
+                    log::trace!("Control batch");
+                }
+
+                let (value, _rest) = crate::parser::record_set().parse(I::from(bytes))?;
+                // debug_assert!(rest.is_empty(), "{:#?} {:?}", value, rest);
+                log::trace!("Parsed record_set: {:#?}", value);
+
+                Ok(Some((bytes, value)))
+            }
+            Some(_) | None => Ok(None),
+        })
+        .and_then(|opt| match opt {
+            Some((range, record_set)) => {
+                RecordBatch::verify_owned::<I>(range, record_set).map(Some)
+            }
             None => Ok(None),
         })
 }
@@ -684,21 +758,79 @@ pub trait RecordBatchParser<Input>: Sized
 where
     Input: combine::Stream,
 {
-    fn parser() -> combine::parser::combinator::FnOpaque<Input, Option<RecordBatch<Self>>>;
+    fn parser() -> combine::parser::combinator::FnOpaque<Input, Self>;
 }
 
-impl<'i, I> RecordBatchParser<I> for Vec<Record<'i>>
+impl<'i, I> RecordBatchParser<I> for Option<RecordBatch<Vec<Record<'i>>>>
 where
-    I: combine::RangeStream<Token = u8, Range = &'i [u8]> + 'i,
+    I: combine::RangeStream<Token = u8, Range = &'i [u8]> + From<&'i [u8]> + 'i,
     I::Error: combine::ParseError<I::Token, I::Range, I::Position>,
 {
-    fn parser() -> combine::parser::combinator::FnOpaque<I, Option<RecordBatch<Self>>> {
+    fn parser() -> combine::parser::combinator::FnOpaque<I, Self> {
         combine::opaque!(combine::parser::combinator::no_partial(record_batch()),)
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+impl<'i, I> RecordBatchParser<I> for Option<RecordBatch<RawRecords<'i>>>
+where
+    I: combine::RangeStream<Token = u8, Range = &'i [u8]> + From<&'i [u8]> + 'i,
+    I::Error: combine::ParseError<I::Token, I::Range, I::Position>,
+{
+    fn parser() -> combine::parser::combinator::FnOpaque<I, Self> {
+        combine::opaque!(combine::parser::combinator::no_partial(raw_record_batch()),)
+    }
+}
+
+impl<'i, I> RecordBatchParser<I> for Vec<crate::parser::record::Record<'i>>
+where
+    I: combine::RangeStream<Token = u8, Range = &'i [u8]> + From<&'i [u8]> + 'i,
+    I::Error: combine::ParseError<I::Token, I::Range, I::Position>,
+{
+    fn parser() -> combine::parser::combinator::FnOpaque<I, Self> {
+        combine::opaque!(combine::parser::combinator::no_partial(array(
+            crate::parser::record::record
+        )),)
+    }
+}
+
+#[derive(Debug)]
+struct RawRecords<'i> {
+    count: i32,
+    bytes: &'i [u8],
+}
+
+impl<'i, I> RecordBatchParser<I> for RawRecords<'i>
+where
+    I: combine::RangeStream<Token = u8, Range = &'i [u8]> + From<&'i [u8]> + 'i,
+    I::Error: combine::ParseError<I::Token, I::Range, I::Position>,
+{
+    fn parser() -> combine::parser::combinator::FnOpaque<I, Self> {
+        combine::opaque!(combine::parser::combinator::no_partial(
+            (
+                be_i32(),
+                combine::parser::function::parser(|input: &mut I| {
+                    let len = input.range().len();
+                    range::take(len).parse_stream(input).into()
+                })
+            )
+                .map(|(count, bytes)| RawRecords { count, bytes })
+        ))
+    }
+}
+
+#[derive(Copy, Clone, Default, Eq, PartialEq)]
 pub struct RecordBatchAttributes(i16);
+
+impl fmt::Debug for RecordBatchAttributes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RecordBatchAttributes")
+            .field("compression", &self.compression())
+            .field("timestamp_type", &self.timestamp_type())
+            .field("is_transactional", &self.is_transactional())
+            .field("is_control_batch", &self.is_control_batch())
+            .finish()
+    }
+}
 
 impl Encode for RecordBatchAttributes {
     fn encode_len(&self) -> usize {
@@ -711,6 +843,13 @@ impl Encode for RecordBatchAttributes {
 }
 
 impl RecordBatchAttributes {
+    pub fn set_compression(&mut self, compression: Compression) {
+        // Clear the compression bits
+        self.0 &= !(0b111);
+        // Then set the bits we want
+        self.0 |= compression as i16;
+    }
+
     pub fn compression(self) -> Option<Compression> {
         match self.0 & 0b111 {
             0 => None,
@@ -737,9 +876,15 @@ impl RecordBatchAttributes {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Compression {
-    None,
+    None = 0,
     Gzip,
     Snappy,
     Lz4,
     Zstd,
+}
+
+impl Default for Compression {
+    fn default() -> Self {
+        Compression::None
+    }
 }

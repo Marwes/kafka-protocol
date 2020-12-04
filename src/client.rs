@@ -96,10 +96,9 @@ where
             .parse(&self.buf[mem::size_of::<i32>()..])
             .expect("Invalid header");
         log::trace!("Response rest: {}", rest.len());
-        let (response, rest) = parser.easy_parse(rest).map_err(|err| {
-            err.map_position(|p| p.translate_position(rest))
-                .map_range(|r| format!("{:?}", r))
-        })?;
+        let (response, rest) = parser
+            .easy_parse(rest)
+            .map_err(|err| mk_parse_error(rest, err))?;
         assert!(
             rest.is_empty(),
             "{} bytes remaining in response: {:?}",
@@ -109,6 +108,14 @@ where
 
         Ok(response)
     }
+}
+
+pub(crate) fn mk_parse_error(
+    rest: &[u8],
+    err: combine::easy::Errors<u8, &[u8], combine::stream::PointerOffset<[u8]>>,
+) -> combine::easy::Errors<u8, String, usize> {
+    err.map_position(|p| p.translate_position(rest))
+        .map_range(|r| format!("{:?}", r))
 }
 
 #[cfg(test)]
@@ -297,7 +304,7 @@ pub(crate) mod tests {
 
         produce_test_message(&mut client).await;
 
-        let fetch: FetchResponse<Vec<Record>> = client
+        let fetch: FetchResponse<Option<RecordBatch<Vec<Record>>>> = client
             .fetch(FetchRequest {
                 replica_id: -1,
                 session_epoch: 0,
@@ -373,16 +380,17 @@ pub(crate) mod tests {
 
     #[test]
     fn parse_record_set() {
-        let (record_set, rest) = crate::parser::record_set()
-            .parse(
-                &[
-                    0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 64, 0, 0, 0, 0, 2, 66, 249, 85, 185, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 28, 0, 0, 0, 6, 107, 101, 121, 10, 118, 97,
-                    108, 117, 101, 0,
-                ][..],
-            )
-            .expect("Parse record_set");
+        let (record_set, rest) =
+            crate::parser::record_set::<Vec<crate::parser::record::Record>, _>()
+                .parse(
+                    &[
+                        0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 64, 0, 0, 0, 0, 2, 66, 249, 85, 185, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 28, 0, 0, 0, 6, 107, 101, 121,
+                        10, 118, 97, 108, 117, 101, 0,
+                    ][..],
+                )
+                .expect("Parse record_set");
         assert!(rest.is_empty(), "{:#?} {:?}", record_set, rest);
     }
 }
