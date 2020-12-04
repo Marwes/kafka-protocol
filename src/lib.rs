@@ -393,6 +393,34 @@ pub struct Record<'i> {
     headers: Vec<RecordHeader<'i>>,
 }
 
+impl<'i> From<crate::parser::Record<'i>> for Record<'i> {
+    fn from(record: crate::parser::Record<'i>) -> Self {
+        let crate::parser::record::Record {
+            length: _,
+            attributes,
+            timestamp_delta,
+            offset_delta,
+            key,
+            value,
+            headers,
+        } = record;
+        Record {
+            attributes,
+            timestamp_delta,
+            offset_delta,
+            key,
+            value,
+            headers: headers
+                .into_iter()
+                .map(|header| RecordHeader {
+                    key: header.header_key,
+                    value: header.value,
+                })
+                .collect(),
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub struct RecordHeader<'i> {
     key: &'i str,
@@ -401,15 +429,8 @@ pub struct RecordHeader<'i> {
 
 pub type OwnedRecordBatch<'i> = RecordBatch<Vec<Record<'i>>>;
 
-impl<'i> OwnedRecordBatch<'i> {
-    fn verify_owned<I>(
-        range: &[u8],
-        record_set: crate::parser::RecordSet<Vec<crate::parser::record::Record<'i>>>,
-    ) -> Result<Self, StreamErrorFor<I>>
-    where
-        I: RangeStream,
-    {
-        let batch = RecordBatch::verify::<I>(range, record_set)?;
+impl<'i> RecordBatch<RawRecords<'i>> {
+    fn into_owned(self, records: Vec<crate::parser::record::Record<'i>>) -> OwnedRecordBatch<'i> {
         let RecordBatch {
             base_offset,
             partition_leader_epoch,
@@ -420,10 +441,10 @@ impl<'i> OwnedRecordBatch<'i> {
             producer_id,
             producer_epoch,
             base_sequence,
-            records,
-        } = batch;
+            records: _,
+        } = self;
 
-        Ok(RecordBatch {
+        RecordBatch {
             base_offset,
             partition_leader_epoch,
             attributes,
@@ -433,35 +454,8 @@ impl<'i> OwnedRecordBatch<'i> {
             producer_id,
             producer_epoch,
             base_sequence,
-            records: records
-                .into_iter()
-                .map(|r| {
-                    let crate::parser::record::Record {
-                        length: _,
-                        attributes,
-                        timestamp_delta,
-                        offset_delta,
-                        key,
-                        value,
-                        headers,
-                    } = r;
-                    Record {
-                        attributes,
-                        timestamp_delta,
-                        offset_delta,
-                        key,
-                        value,
-                        headers: headers
-                            .into_iter()
-                            .map(|header| RecordHeader {
-                                key: header.header_key,
-                                value: header.value,
-                            })
-                            .collect(),
-                    }
-                })
-                .collect(),
-        })
+            records: records.into_iter().map(Record::from).collect(),
+        }
     }
 }
 
@@ -559,36 +553,22 @@ where
     I: RangeStream<Token = u8, Range = &'i [u8]> + From<&'i [u8]> + 'i,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    nullable_bytes()
-        .flat_map(|bytes| match bytes {
-            Some(bytes) if !bytes.is_empty() => {
-                let attributes = RecordBatchAttributes(
-                    (&bytes[mem::size_of::<i64>()
-                        + mem::size_of::<i32>()
-                        + mem::size_of::<i32>()
-                        + mem::size_of::<i8>()
-                        + mem::size_of::<i32>()..])
-                        .get_i16(),
-                );
+    raw_record_batch().flat_map(|batch| match batch {
+        Some(batch) => {
+            let input = I::from(batch.records.bytes);
+            let count = usize::try_from(batch.records.count).map_err(|err| {
+                I::Error::from_error(input.position(), StreamErrorFor::<I>::other(err))
+            })?;
+            let (value, _rest) =
+                combine::parser::repeat::count_min_max(count, count, crate::parser::record())
+                    .parse(input)?;
+            // debug_assert!(rest.is_empty(), "{:#?} {:?}", value, rest);
+            log::trace!("Parsed record_set: {:#?}", value);
 
-                if attributes.is_control_batch() {
-                    log::trace!("Control batch");
-                }
-
-                let (value, _rest) = crate::parser::record_set().parse(I::from(bytes))?;
-                // debug_assert!(rest.is_empty(), "{:#?} {:?}", value, rest);
-                log::trace!("Parsed record_set: {:#?}", value);
-
-                Ok(Some((bytes, value)))
-            }
-            Some(_) | None => Ok(None),
-        })
-        .and_then(|opt| match opt {
-            Some((range, record_set)) => {
-                RecordBatch::verify_owned::<I>(range, record_set).map(Some)
-            }
-            None => Ok(None),
-        })
+            Ok(Some(batch.into_owned(value)))
+        }
+        None => Ok(None),
+    })
 }
 
 fn encode_var_bytes_space(input: &[u8]) -> usize {
@@ -850,13 +830,13 @@ impl RecordBatchAttributes {
         self.0 |= compression as i16;
     }
 
-    pub fn compression(self) -> Option<Compression> {
+    pub fn compression(self) -> Compression {
         match self.0 & 0b111 {
-            0 => None,
-            1 => Some(Compression::Gzip),
-            2 => Some(Compression::Snappy),
-            3 => Some(Compression::Lz4),
-            4 => Some(Compression::Zstd),
+            0 => Compression::None,
+            1 => Compression::Gzip,
+            2 => Compression::Snappy,
+            3 => Compression::Lz4,
+            4 => Compression::Zstd,
             _ => unreachable!(),
         }
     }

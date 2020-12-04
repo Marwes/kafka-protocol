@@ -23,60 +23,6 @@ struct EncodedRecord {
     buffer: Encoder,
 }
 
-enum Decoder {
-    Raw,
-    #[cfg(feature = "snap")]
-    Snappy(snap::raw::Decoder, Vec<u8>),
-}
-
-impl Decoder {
-    fn new(compression: Compression) -> Result<Self> {
-        Ok(match compression {
-            Compression::None => Decoder::Raw,
-            Compression::Gzip => unimplemented!(),
-            Compression::Snappy => {
-                #[cfg(feature = "snap")]
-                {
-                    Decoder::Snappy(snap::raw::Decoder::new(), vec![])
-                }
-
-                #[cfg(not(feature = "snap"))]
-                {
-                    return Err(format!(
-                        "Could not enable snappy encoding as the `snap` feature were not enabled"
-                    )
-                    .into());
-                }
-            }
-            Compression::Lz4 => unimplemented!(),
-            Compression::Zstd => unimplemented!(),
-        })
-    }
-
-    fn decompress<'a>(&'a mut self, input: &'a [u8]) -> &'a [u8] {
-        match self {
-            Decoder::Raw => input,
-            #[cfg(feature = "snap")]
-            Decoder::Snappy(decoder, buf) => {
-                // TODO unwraps
-                buf.resize(snap::raw::decompress_len(input).unwrap(), 0);
-                let len = decoder
-                    .decompress(input, buf)
-                    .unwrap_or_else(|err| panic!("{}", err));
-                &buf[..len]
-            }
-        }
-    }
-
-    fn compression(&self) -> Compression {
-        match self {
-            Decoder::Raw => Compression::None,
-            #[cfg(feature = "snap")]
-            Decoder::Snappy(..) => Compression::Snappy,
-        }
-    }
-}
-
 enum Encoder {
     Raw(Vec<u8>),
     #[cfg(feature = "snap")]
@@ -340,9 +286,9 @@ mod tests {
 
     use crate::{
         client::tests::*,
+        consumer::{Consumer, Decoder},
         error::ErrorCode,
-        parser::{produce_request, FetchRequest, FetchResponse, ListOffsetsRequest},
-        FETCH_LATEST_OFFSET,
+        parser::produce_request,
     };
 
     impl EncodedRecord {
@@ -376,31 +322,15 @@ mod tests {
 
         create_test_topic(&mut producer.client).await;
 
-        let list_offsets = producer
-            .client
-            .list_offsets(ListOffsetsRequest {
-                replica_id: 0,
-                isolation_level: 0,
-                topics: vec![crate::parser::list_offsets_request::Topics {
-                    topic: "test",
-                    partitions: vec![crate::parser::list_offsets_request::Partitions {
-                        partition: 0,
-                        timestamp: FETCH_LATEST_OFFSET,
-                        current_leader_epoch: 0,
-                    }],
-                }],
-            })
-            .await
-            .unwrap();
+        let mut consumer = Consumer::connect(kafka_host()).await.unwrap();
+        {
+            let mut fetch = consumer
+                .fetch(vec!["test"])
+                .await
+                .unwrap_or_else(|err| panic!("{}", err));
 
-        assert_eq!(
-            list_offsets.responses[0].partition_responses[0].error_code,
-            ErrorCode::None,
-            "{:#?}",
-            list_offsets
-        );
-        eprintln!("{:#?}", list_offsets);
-        let fetch_offset = list_offsets.responses[0].partition_responses[0].offset;
+            assert_eq!(fetch.next(), None);
+        }
 
         for &value in [&b"value"[..], b"value2", b"value3"].iter() {
             producer.enqueue(RecordInput {
@@ -419,67 +349,27 @@ mod tests {
         );
         eprintln!("{:#?}", produce_response);
 
-        let fetch: FetchResponse<Option<RecordBatch<Vec<Record>>>> = producer
-            .client
-            .fetch(FetchRequest {
-                replica_id: -1,
-                session_epoch: 0,
-                forgotten_topics_data: Vec::new(),
-                isolation_level: 0,
-                session_id: 0,
-                min_bytes: 1,
-                max_bytes: 1024 * 1024,
-                rack_id: "",
-                max_wait_time: duration_to_millis(Duration::from_millis(10)).unwrap(),
-                topics: vec![crate::parser::fetch_request::Topics {
-                    topic: "test",
-                    partitions: vec![crate::parser::fetch_request::Partitions {
-                        current_leader_epoch: 0,
-                        fetch_offset,
-                        log_start_offset: 0,
-                        partition: 0,
-                        partition_max_bytes: 1024 * 128,
-                    }],
-                }],
-            })
+        let fetch = consumer
+            .fetch(vec!["test"])
             .await
             .unwrap_or_else(|err| panic!("{}", err));
 
-        eprintln!("{:#?}", fetch);
-
-        assert_eq!(fetch.responses[0].topic, "test");
-
-        let partition_response = &fetch.responses[0].partition_responses[0];
         assert_eq!(
-            partition_response.partition_header.error_code,
-            ErrorCode::None,
-            "{:#?}",
-            partition_response.partition_header
-        );
-
-        let record_set = partition_response
-            .record_set
-            .as_ref()
-            .expect("record_set should not be empty");
-
-        assert_eq!(
-            record_set
-                .records
-                .iter()
-                .map(|r| str::from_utf8(r.key).unwrap())
+            fetch
+                .map(|(topic, record)| {
+                    assert_eq!(topic, "test");
+                    (
+                        str::from_utf8(record.key).unwrap(),
+                        str::from_utf8(record.value).unwrap(),
+                    )
+                })
                 .collect::<Vec<_>>(),
-            ["value", "value2", "value3"]
+            vec![
+                ("value", "value"),
+                ("value2", "value2"),
+                ("value3", "value3")
+            ]
         );
-        assert_eq!(
-            record_set
-                .records
-                .iter()
-                .map(|r| str::from_utf8(r.value).unwrap())
-                .collect::<Vec<_>>(),
-            ["value", "value2", "value3"]
-        );
-
-        eprintln!("{:#?}", record_set);
     }
 
     #[test]
@@ -527,7 +417,7 @@ mod tests {
             .await
             .unwrap();
 
-        for &value in [&b"value"[..], b"value2", b"value3"].iter() {
+        for &value in [&b"value1"[..], b"value2", b"value3"].iter() {
             producer.enqueue(RecordInput {
                 topic: "test",
                 partition: 0,
@@ -555,8 +445,9 @@ mod tests {
 
         let mut decoder = Decoder::new(compression).unwrap();
         let mut bytes = decoder.decompress(records.bytes);
-        for _ in 0..records.count {
+        for i in 0..records.count {
             let (record, rest) = crate::parser::record::record().parse(bytes).unwrap();
+            assert_eq!(record.value, format!("value{}", i + 1).as_bytes());
             bytes = rest;
         }
         assert!(bytes.is_empty());
