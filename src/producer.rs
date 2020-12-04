@@ -443,7 +443,7 @@ mod tests {
                 }],
             })
             .await
-            .unwrap();
+            .unwrap_or_else(|err| panic!("{}", err));
 
         eprintln!("{:#?}", fetch);
 

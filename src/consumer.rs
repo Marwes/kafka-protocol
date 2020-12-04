@@ -5,7 +5,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use crate::{
     client::Client,
     parser::{FetchRequest, FetchResponse},
-    Record, RecordBatch, Result,
+    RawRecords, Record, RecordBatch, Result,
 };
 
 pub struct Consumer<I> {
@@ -26,10 +26,18 @@ impl<I> Consumer<I>
 where
     I: AsyncRead + AsyncWrite + std::marker::Unpin,
 {
-    pub async fn fetch<'a>(
+    async fn fetch<'a>(
         &'a mut self,
         topics: impl IntoIterator<Item = &'a str>,
     ) -> Result<FetchResponse<'a, Option<RecordBatch<Vec<Record<'a>>>>>> {
+        let response = self.fetch_raw(topics).await?;
+        unreachable!()
+    }
+
+    async fn fetch_raw<'a>(
+        &'a mut self,
+        topics: impl IntoIterator<Item = &'a str>,
+    ) -> Result<FetchResponse<'a, Option<RecordBatch<RawRecords<'a>>>>> {
         let fetch_offset = self.fetch_offset;
         self.client
             .fetch(FetchRequest {
