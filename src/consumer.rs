@@ -10,7 +10,7 @@ use crate::{
 
 pub struct Consumer<I> {
     client: Client<I>,
-    fetch_offsets: BTreeMap<String, i64>,
+    fetch_offsets: BTreeMap<String, Vec<(i32, i64)>>,
 }
 
 pub(crate) struct Decoder {
@@ -141,16 +141,10 @@ where
         let mut fetch_topics = Vec::with_capacity(topics.len());
         let mut list_topics = Vec::new();
         for topic in &topics {
-            if let Some(&fetch_offset) = self.fetch_offsets.get(*topic) {
+            if let Some(fetch_offset) = self.fetch_offsets.get(*topic) {
                 fetch_topics.push(crate::parser::fetch_request::Topics {
                     topic,
-                    partitions: vec![crate::parser::fetch_request::Partitions {
-                        current_leader_epoch: 0,
-                        fetch_offset,
-                        log_start_offset: 0,
-                        partition: 0,
-                        partition_max_bytes: 1024 * 128,
-                    }],
+                    partitions: mk_fetch_requests(fetch_offset),
                 });
             } else {
                 list_topics.push(crate::parser::list_offsets_request::Topics {
@@ -197,22 +191,16 @@ where
             }
 
             for response in list_offsets.responses {
-                assert_eq!(response.partition_responses.len(), 1);
-                let fetch_offset = response.partition_responses[0].offset;
-                self.fetch_offsets
-                    .insert(response.topic.into(), fetch_offset);
+                let fetch_offset = self.fetch_offsets.entry(response.topic.into()).or_default();
+                for partition_response in &response.partition_responses {
+                    fetch_offset.push((partition_response.partition, partition_response.offset));
+                }
                 fetch_topics.push(crate::parser::fetch_request::Topics {
                     topic: topics
                         .iter()
                         .find(|topic| **topic == response.topic)
                         .unwrap(),
-                    partitions: vec![crate::parser::fetch_request::Partitions {
-                        current_leader_epoch: 0,
-                        fetch_offset,
-                        log_start_offset: 0,
-                        partition: 0,
-                        partition_max_bytes: 1024 * 128,
-                    }],
+                    partitions: mk_fetch_requests(fetch_offset),
                 });
             }
         }
@@ -236,4 +224,19 @@ where
     pub fn commit(&mut self) -> io::Result<()> {
         Ok(())
     }
+}
+
+fn mk_fetch_requests(fetch_offset: &[(i32, i64)]) -> Vec<crate::parser::fetch_request::Partitions> {
+    fetch_offset
+        .iter()
+        .map(
+            |&(partition, fetch_offset)| crate::parser::fetch_request::Partitions {
+                current_leader_epoch: 0,
+                fetch_offset,
+                log_start_offset: 0,
+                partition,
+                partition_max_bytes: 1024 * 128,
+            },
+        )
+        .collect()
 }
