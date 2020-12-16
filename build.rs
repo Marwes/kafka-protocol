@@ -1023,6 +1023,24 @@ where
             writeln!(out, "        }})")?;
             writeln!(out, "    }}")?;
             writeln!(out, "}}")?;
+
+            writeln!(out, "impl std::fmt::Display for ErrorCode {{")?;
+            writeln!(
+                out,
+                "    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {{"
+            )?;
+            writeln!(out, "        match self {{")?;
+            for (name, _number, doc) in iter() {
+                writeln!(
+                    out,
+                    "            ErrorCode::{} => f.write_str(\"{}\"),",
+                    name,
+                    doc.unwrap_or_else(|| name.as_str())
+                )?;
+            }
+            writeln!(out, "        }}")?;
+            writeln!(out, "    }}")?;
+            writeln!(out, "}}")?;
         }
         {
             println!("cargo:rerun-if-changed=api_keys.txt");
