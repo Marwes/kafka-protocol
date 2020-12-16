@@ -13,6 +13,7 @@ use {
         Parser, RangeStream,
     },
     integer_encoding::VarInt,
+    itertools::Itertools,
     tokio::io::{AsyncRead, AsyncWrite},
 };
 
@@ -40,6 +41,15 @@ quick_error! {
         Io(err: io::Error) {
             display("{}", err)
             from()
+        }
+        BrokerErrors(cmd: String, errors: Vec<(String, i32, ErrorCode)>) {
+            display(
+                "`{}` returned the following errors: {}",
+                cmd,
+                errors.iter().format_with(", ", |(topic, partition, code), f| {
+                    f(&format_args!("{}/{}: `{}`", topic, partition, code))
+                })
+            )
         }
         Message(msg: String) {
             display("{}", msg)

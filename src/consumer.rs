@@ -5,7 +5,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use crate::{
     client::Client,
     parser::{fetch_response, FetchRequest, FetchResponse, ListOffsetsRequest},
-    Compression, ErrorCode, RawRecords, Record, RecordBatch, Result, FETCH_LATEST_OFFSET,
+    Compression, Error, ErrorCode, RawRecords, Record, RecordBatch, Result, FETCH_LATEST_OFFSET,
 };
 
 pub struct Consumer<I> {
@@ -172,14 +172,29 @@ where
                     isolation_level: 0,
                     topics: list_topics,
                 })
-                .await
-                .unwrap();
-            assert_eq!(
-                list_offsets.responses[0].partition_responses[0].error_code,
-                ErrorCode::None,
-                "{:#?}",
-                list_offsets
-            );
+                .await?;
+            let errors = list_offsets
+                .responses
+                .iter()
+                .flat_map(|response| {
+                    response
+                        .partition_responses
+                        .iter()
+                        .filter(|partition_response| {
+                            partition_response.error_code != ErrorCode::None
+                        })
+                        .map(move |partition_response| {
+                            (
+                                response.topic.into(),
+                                partition_response.partition,
+                                partition_response.error_code,
+                            )
+                        })
+                })
+                .collect::<Vec<_>>();
+            if !errors.is_empty() {
+                return Err(Error::BrokerErrors("List offsets".into(), errors));
+            }
 
             for response in list_offsets.responses {
                 assert_eq!(response.partition_responses.len(), 1);
