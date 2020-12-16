@@ -227,6 +227,10 @@ pub mod record_set;
 pub use self::record_set::{record_set, RecordSet};
 pub mod record;
 pub use self::record::{record, Record};
+pub mod protocol_metadata;
+pub use self::protocol_metadata::{protocol_metadata, ProtocolMetadata};
+pub mod member_assignment;
+pub use self::member_assignment::{member_assignment, MemberAssignment};
 impl<I> Client<I>
 where
     I: AsyncRead + AsyncWrite + std::marker::Unpin,

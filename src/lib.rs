@@ -42,6 +42,9 @@ quick_error! {
             display("{}", err)
             from()
         }
+        JoinGroup(group_id: String, error: ErrorCode) {
+            display("Unable to join group `{}`: `{}`", group_id, error)
+        }
         BrokerErrors(cmd: String, errors: Vec<(String, i32, ErrorCode)>) {
             display(
                 "`{}` returned the following errors: {}",
@@ -205,6 +208,22 @@ impl<T> Buffer for T where T: bytes::BufMut + std::ops::DerefMut<Target = [u8]> 
 pub trait Encode {
     fn encode_len(&self) -> usize;
     fn encode(&self, writer: &mut impl Buffer);
+}
+
+impl<F, I> Encode for F
+where
+    F: Fn() -> I,
+    I: IntoIterator,
+    I::Item: Encode,
+{
+    fn encode_len(&self) -> usize {
+        self().into_iter().map(|i| i.encode_len()).sum()
+    }
+    fn encode(&self, writer: &mut impl Buffer) {
+        for i in self() {
+            i.encode(writer)
+        }
+    }
 }
 
 macro_rules! encode_impl {

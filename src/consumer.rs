@@ -4,12 +4,17 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::{
     client::Client,
-    parser::{fetch_response, FetchRequest, FetchResponse, ListOffsetsRequest},
-    Compression, Error, ErrorCode, RawRecords, Record, RecordBatch, Result, FETCH_LATEST_OFFSET,
+    parser::{
+        fetch_response, join_group_request, sync_group_request, FetchRequest, FetchResponse,
+        JoinGroupRequest, ListOffsetsRequest, SyncGroupRequest,
+    },
+    Compression, Encode, Error, ErrorCode, RawRecords, Record, RecordBatch, Result,
+    FETCH_LATEST_OFFSET,
 };
 
 pub struct Consumer<I> {
     client: Client<I>,
+    member_id: String,
     fetch_offsets: BTreeMap<String, Vec<(i32, i64)>>,
 }
 
@@ -53,14 +58,145 @@ impl Decoder {
     }
 }
 
-impl Consumer<tokio::net::TcpStream> {
-    pub async fn connect(addr: impl tokio::net::ToSocketAddrs) -> io::Result<Self> {
-        let client = Client::connect(addr).await?;
+#[derive(Default)]
+pub struct Builder {
+    group_id: String,
+    topic: String,
+}
 
-        Ok(Self {
+impl Builder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn topic(mut self, topic: impl Into<String>) -> Self {
+        self.topic = topic.into();
+        self
+    }
+
+    pub fn group_id(mut self, group_id: impl Into<String>) -> Self {
+        self.group_id = group_id.into();
+        self
+    }
+
+    pub async fn build(
+        self,
+        addr: impl tokio::net::ToSocketAddrs,
+    ) -> Result<Consumer<tokio::net::TcpStream>> {
+        let mut client = Client::connect(addr).await?;
+
+        let mut metadata = Vec::new();
+        crate::parser::protocol_metadata::ProtocolMetadata {
+            version: 0,
+            subscription: vec![&self.topic],
+            user_data: &[],
+        }
+        .encode(&mut metadata);
+
+        let response = {
+            macro_rules! join_group {
+                ($member_id: expr) => {
+                    client.join_group(JoinGroupRequest {
+                        group_id: &self.group_id,
+                        session_timeout_ms: 10000,
+                        rebalance_timeout_ms: 1000,
+                        member_id: $member_id,
+                        group_instance_id: None,
+                        protocol_type: "consumer",
+                        protocols: vec![
+                            join_group_request::Protocols {
+                                name: "test",
+                                metadata: &metadata,
+                            },
+                            join_group_request::Protocols {
+                                name: "",
+                                metadata: &metadata,
+                            },
+                        ],
+                    })
+                };
+            };
+
+            let response = join_group!("").await?;
+            // Newer versions requires a member_id in the request so we will first get an error
+            // after which we retry with the returned member_id
+            // https://cwiki.apache.org/confluence/display/KAFKA/KIP-394
+            if response.error_code == ErrorCode::MemberIdRequired {
+            } else if response.error_code != ErrorCode::None {
+                return Err(Error::JoinGroup(self.group_id, response.error_code));
+            }
+
+            let member_id = String::from(response.member_id);
+
+            let response = join_group!(&member_id).await?;
+            if response.error_code != ErrorCode::None {
+                return Err(Error::JoinGroup(self.group_id, response.error_code));
+            }
+            response
+        };
+        let member_id = String::from(response.member_id);
+
+        let member_assignments: Vec<_>;
+        let assignments = if response.leader == response.member_id {
+            member_assignments = response
+                .members
+                .iter()
+                .map(|member| {
+                    use crate::parser::member_assignment;
+
+                    let mut vec = Vec::<u8>::new();
+                    member_assignment::MemberAssignment {
+                        version: 0,
+                        partition_assignment: vec![member_assignment::Assignment {
+                            topic: &self.topic,
+                            partition: vec![0],
+                        }],
+                    }
+                    .encode(&mut vec);
+                    (String::from(member.member_id), vec)
+                })
+                .collect();
+            member_assignments
+                .iter()
+                .map(|(member_id, assignment)| sync_group_request::Assignments {
+                    member_id,
+                    assignment,
+                })
+                .collect()
+        } else {
+            vec![]
+        };
+
+        let generation_id = response.generation_id;
+
+        let response = client
+            .sync_group(SyncGroupRequest {
+                group_id: &self.group_id,
+                member_id: &member_id,
+                generation_id,
+                group_instance_id: None,
+                assignments,
+            })
+            .await?;
+        if response.error_code != ErrorCode::None {
+            return Err(Error::JoinGroup(self.group_id, response.error_code));
+        }
+
+        Ok(Consumer {
             client,
+            member_id,
             fetch_offsets: Default::default(),
         })
+    }
+}
+
+impl Consumer<tokio::net::TcpStream> {
+    pub fn builder() -> Builder {
+        Builder::new()
+    }
+
+    pub async fn connect(addr: impl tokio::net::ToSocketAddrs) -> Result<Self> {
+        Builder::new().build(addr).await
     }
 }
 

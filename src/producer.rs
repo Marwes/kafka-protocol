@@ -320,7 +320,11 @@ mod tests {
 
         create_test_topic(&mut producer.client).await;
 
-        let mut consumer = Consumer::connect(kafka_host()).await.unwrap();
+        let mut consumer = Consumer::builder()
+            .group_id("test")
+            .build(kafka_host())
+            .await
+            .unwrap_or_else(|err| panic!("{}", err));
         {
             let mut fetch = consumer
                 .fetch(vec!["test"])

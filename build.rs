@@ -46,6 +46,20 @@ mod regenerate {
             headerKey => varstring
             Value => varbytes"#;
 
+    const PROTOCOL_METADATA: &str = r#"ProtocolMetadata => Version Subscription UserData
+  Version => int16
+  Subscription => [Topic]
+    Topic => string
+  UserData => bytes"#;
+
+    const CONSUMER_MEMBER_ASSIGNMENT: &str = r#"MemberAssignment => Version PartitionAssignment
+  Version => int16
+  PartitionAssignment => [Assignment]
+    Assignment => Topic [Partition]
+        Topic => string
+        Partition => int32
+  UserData => bytes"#;
+
     macro_rules! chain {
         ($alloc: expr, $first: expr, $($rest: expr),* $(,)?) => {{
             #[allow(unused_mut)]
@@ -169,9 +183,9 @@ mod regenerate {
                 "varstring" => Type::VarString,
                 "varbytes" => Type::VarBytes,
                 "varint" => Type::VarInt,
-                "BYTES" => Type::Bytes,
+                "bytes" | "BYTES" => Type::Bytes,
                 "NULLABLE_BYTES" => Type::NullableBytes,
-                "STRING" => Type::String,
+                "string" | "STRING" => Type::String,
                 "NULLABLE_STRING" => Type::NullableString,
                 "BOOLEAN" => Type::Bool,
                 _ if name.starts_with("ARRAY") => Type::Array, // TODO
@@ -865,8 +879,16 @@ mod regenerate {
         let rules = inputs
             .iter()
             .map(|s| s.as_str())
-            .chain(Some(RECORD_DEF))
-            .chain(Some(RECORDS_DEF))
+            .chain(
+                [
+                    RECORD_DEF,
+                    RECORDS_DEF,
+                    PROTOCOL_METADATA,
+                    CONSUMER_MEMBER_ASSIGNMENT,
+                ]
+                .iter()
+                .cloned(),
+            )
             .enumerate()
             .map(|(_, input)| -> io::Result<_> {
                 // eprintln!("Input {}: {}", i, input);
