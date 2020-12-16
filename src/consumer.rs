@@ -95,7 +95,7 @@ impl FetchedRecords<'_> {
             }
         };
         use combine::Parser;
-        let input = self
+        let mut input = self
             .decoder
             .decompress(
                 record_batch.attributes.compression(),
@@ -103,17 +103,16 @@ impl FetchedRecords<'_> {
             )
             .unwrap();
         // TODO unwraps
-        let count = usize::try_from(record_batch.records.count).unwrap();
-        let (value, _rest) =
-            combine::parser::repeat::count_min_max(count, count, crate::parser::record())
-                .parse(input)
-                .unwrap();
-        let value: Vec<_> = value;
-        Some(
-            value
-                .into_iter()
-                .map(move |record| (topic, Record::from(record))),
-        )
+        let mut count = usize::try_from(record_batch.records.count).unwrap();
+        Some(std::iter::from_fn(move || {
+            if count == 0 {
+                return None;
+            }
+            count -= 1;
+            let (record, rest) = crate::parser::record().parse(input).unwrap();
+            input = rest;
+            Some((topic, Record::from(record)))
+        }))
     }
 }
 

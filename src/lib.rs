@@ -410,22 +410,12 @@ impl<'i> From<crate::parser::Record<'i>> for Record<'i> {
             offset_delta,
             key,
             value,
-            headers: headers
-                .into_iter()
-                .map(|header| RecordHeader {
-                    key: header.header_key,
-                    value: header.value,
-                })
-                .collect(),
+            headers,
         }
     }
 }
 
-#[derive(Clone, PartialEq, Debug)]
-pub struct RecordHeader<'i> {
-    key: &'i str,
-    value: &'i [u8],
-}
+pub type RecordHeader<'i> = crate::parser::record::Header<'i>;
 
 pub type OwnedRecordBatch<'i> = RecordBatch<Vec<Record<'i>>>;
 
@@ -698,17 +688,6 @@ impl Encode for Record<'_> {
         encode_var_bytes(self.value, writer);
 
         encode_var_array(&self.headers, writer);
-    }
-}
-
-impl Encode for RecordHeader<'_> {
-    fn encode_len(&self) -> usize {
-        encode_var_bytes_space(self.key.as_bytes()) + encode_var_bytes_space(self.value)
-    }
-
-    fn encode(&self, writer: &mut impl Buffer) {
-        encode_var_bytes(self.key.as_bytes(), writer);
-        encode_var_bytes(self.value, writer);
     }
 }
 
