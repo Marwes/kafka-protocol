@@ -280,8 +280,6 @@ fn duration_to_millis(duration: Duration) -> Result<i32> {
 mod tests {
     use super::*;
 
-    use std::str;
-
     use combine::{EasyParser, Parser};
 
     use crate::{
@@ -329,7 +327,7 @@ mod tests {
                 .await
                 .unwrap_or_else(|err| panic!("{}", err));
 
-            assert_eq!(fetch.next(), None);
+            assert!(fetch.next_batch().is_none());
         }
 
         for &value in [&b"value"[..], b"value2", b"value3"].iter() {
@@ -349,25 +347,28 @@ mod tests {
         );
         eprintln!("{:#?}", produce_response);
 
-        let fetch = consumer
+        let mut fetch = consumer
             .fetch(vec!["test"])
             .await
             .unwrap_or_else(|err| panic!("{}", err));
 
+        let mut result = Vec::new();
+        while let Some(batch) = fetch.next_batch() {
+            result.extend(batch.map(|(topic, record)| {
+                assert_eq!(topic, "test");
+                (
+                    String::from_utf8(record.key.to_owned()).unwrap(),
+                    String::from_utf8(record.value.to_owned()).unwrap(),
+                )
+            }));
+        }
+
         assert_eq!(
-            fetch
-                .map(|(topic, record)| {
-                    assert_eq!(topic, "test");
-                    (
-                        str::from_utf8(record.key).unwrap(),
-                        str::from_utf8(record.value).unwrap(),
-                    )
-                })
-                .collect::<Vec<_>>(),
+            result,
             vec![
-                ("value", "value"),
-                ("value2", "value2"),
-                ("value3", "value3")
+                ("value".to_string(), "value".to_string()),
+                ("value2".to_string(), "value2".to_string()),
+                ("value3".to_string(), "value3".to_string())
             ]
         );
     }
@@ -443,8 +444,8 @@ mod tests {
         let records = &data.record_set.as_ref().unwrap().records;
         assert_eq!(records.count, 3);
 
-        let mut decoder = Decoder::new(compression).unwrap();
-        let mut bytes = decoder.decompress(records.bytes);
+        let mut decoder = Decoder::new();
+        let mut bytes = decoder.decompress(compression, records.bytes).unwrap();
         for i in 0..records.count {
             let (record, rest) = crate::parser::record::record().parse(bytes).unwrap();
             assert_eq!(record.value, format!("value{}", i + 1).as_bytes());

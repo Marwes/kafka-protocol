@@ -4,7 +4,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::{
     client::Client,
-    parser::{FetchRequest, FetchResponse, ListOffsetsRequest},
+    parser::{fetch_response, FetchRequest, FetchResponse, ListOffsetsRequest},
     Compression, ErrorCode, RawRecords, Record, RecordBatch, Result, FETCH_LATEST_OFFSET,
 };
 
@@ -13,49 +13,43 @@ pub struct Consumer<I> {
     fetch_offsets: BTreeMap<String, i64>,
 }
 
-pub(crate) enum Decoder {
-    Raw,
+pub(crate) struct Decoder {
     #[cfg(feature = "snap")]
-    Snappy(snap::raw::Decoder, Vec<u8>),
+    snap: snap::raw::Decoder,
+    #[cfg(feature = "snap")]
+    buf: Vec<u8>,
 }
 
 impl Decoder {
-    pub fn new(compression: Compression) -> Result<Self> {
-        Ok(match compression {
-            Compression::None => Decoder::Raw,
-            Compression::Gzip => unimplemented!(),
-            Compression::Snappy => {
-                #[cfg(feature = "snap")]
-                {
-                    Decoder::Snappy(snap::raw::Decoder::new(), vec![])
-                }
-
-                #[cfg(not(feature = "snap"))]
-                {
-                    return Err(format!(
-                        "Could not enable snappy encoding as the `snap` feature were not enabled"
-                    )
-                    .into());
-                }
-            }
-            Compression::Lz4 => unimplemented!(),
-            Compression::Zstd => unimplemented!(),
-        })
+    pub fn new() -> Self {
+        Self {
+            #[cfg(feature = "snap")]
+            snap: snap::raw::Decoder::new(),
+            #[cfg(feature = "snap")]
+            buf: vec![],
+        }
     }
 
-    pub fn decompress<'a>(&'a mut self, input: &'a [u8]) -> &'a [u8] {
-        match self {
-            Decoder::Raw => input,
+    pub fn decompress<'a>(
+        &'a mut self,
+        compression: Compression,
+        input: &'a [u8],
+    ) -> Result<&'a [u8]> {
+        Ok(match compression {
+            Compression::None => input,
             #[cfg(feature = "snap")]
-            Decoder::Snappy(decoder, buf) => {
-                // TODO unwraps
-                buf.resize(snap::raw::decompress_len(input).unwrap(), 0);
-                let len = decoder
-                    .decompress(input, buf)
+            Compression::Snappy => {
+                // TODO unwraps and resize
+                self.buf
+                    .resize(snap::raw::decompress_len(input).unwrap(), 0);
+                let len = self
+                    .snap
+                    .decompress(input, &mut self.buf)
                     .unwrap_or_else(|err| panic!("{}", err));
-                &buf[..len]
+                &self.buf[..len]
             }
-        }
+            _ => return Err(format!("Unsupported compression {:?}", compression).into()),
+        })
     }
 }
 
@@ -70,6 +64,59 @@ impl Consumer<tokio::net::TcpStream> {
     }
 }
 
+pub struct FetchedRecords<'a> {
+    response: FetchResponse<'a, Option<RecordBatch<RawRecords<'a>>>>,
+    responses: Option<fetch_response::Responses<'a, Option<RecordBatch<RawRecords<'a>>>>>,
+    partition_responses:
+        Option<fetch_response::PartitionResponses<Option<RecordBatch<RawRecords<'a>>>>>,
+    decoder: Decoder,
+}
+
+impl FetchedRecords<'_> {
+    pub fn next_batch(&mut self) -> Option<impl Iterator<Item = (&str, Record<'_>)>> {
+        let (topic, record_batch) = 'outer: loop {
+            if let Some(responses) = &mut self.responses {
+                loop {
+                    if let Some(partition_responses) = &mut self.partition_responses {
+                        if let Some(record_set) = partition_responses.record_set.take() {
+                            break 'outer (responses.topic, record_set);
+                        }
+                    }
+                    self.partition_responses = responses.partition_responses.pop();
+                    if self.partition_responses.is_none() {
+                        break;
+                    }
+                }
+            }
+
+            self.responses = self.response.responses.pop();
+            if self.responses.is_none() {
+                return None;
+            }
+        };
+        use combine::Parser;
+        let input = self
+            .decoder
+            .decompress(
+                record_batch.attributes.compression(),
+                record_batch.records.bytes,
+            )
+            .unwrap();
+        // TODO unwraps
+        let count = usize::try_from(record_batch.records.count).unwrap();
+        let (value, _rest) =
+            combine::parser::repeat::count_min_max(count, count, crate::parser::record())
+                .parse(input)
+                .unwrap();
+        let value: Vec<_> = value;
+        Some(
+            value
+                .into_iter()
+                .map(move |record| (topic, Record::from(record))),
+        )
+    }
+}
+
 impl<I> Consumer<I>
 where
     I: AsyncRead + AsyncWrite + std::marker::Unpin,
@@ -77,33 +124,14 @@ where
     pub async fn fetch<'a>(
         &'a mut self,
         topics: impl IntoIterator<Item = &'a str>,
-    ) -> Result<impl Iterator<Item = (&'a str, Record<'a>)>> {
+    ) -> Result<FetchedRecords<'a>> {
         let response = self.fetch_raw(topics).await?;
-        Ok(response.responses.into_iter().flat_map(|response| {
-            let topic = response.topic;
-            response
-                .partition_responses
-                .into_iter()
-                .flat_map(move |response| response.record_set.into_iter())
-                .flat_map(move |record_batch| {
-                    use combine::Parser;
-                    let mut decoder = Decoder::new(record_batch.attributes.compression()).unwrap();
-                    let input = decoder.decompress(record_batch.records.bytes);
-                    // TODO unwraps
-                    let count = usize::try_from(record_batch.records.count).unwrap();
-                    let (value, _rest) = combine::parser::repeat::count_min_max(
-                        count,
-                        count,
-                        crate::parser::record(),
-                    )
-                    .parse(input)
-                    .unwrap();
-                    let value: Vec<_> = value;
-                    value
-                        .into_iter()
-                        .map(move |record| (topic, Record::from(record)))
-                })
-        }))
+        Ok(FetchedRecords {
+            response,
+            responses: None,
+            partition_responses: None,
+            decoder: Decoder::new(),
+        })
     }
 
     async fn fetch_raw<'a, 'b>(
