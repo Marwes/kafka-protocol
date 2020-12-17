@@ -405,80 +405,86 @@ mod regenerate {
                 KafkaParser::Array {
                     elem, elem_name, ..
                 } => elem.generate_struct(elem_name, out, arena),
-                KafkaParser::Composite { parsers, .. } => chain![
-                    arena,
-                    "#[derive(Clone, Debug, PartialEq)]",
-                    arena.line_(),
-                    "pub struct ",
-                    inflector::cases::pascalcase::to_pascal_case(name),
-                    self.params_definition(),
-                    " {",
-                    KafkaParser::generate_fields(parsers, out, arena),
-                    arena.line_(),
-                    "}",
-                    arena.line_(),
-                    arena.line_(),
-                    "impl",
-                    self.lifetime(),
-                    " crate::Encode for ",
-                    inflector::cases::pascalcase::to_pascal_case(name),
-                    self.lifetime(),
-                    " where ",
-                    arena.concat(
-                        self.non_lifetime_params()
-                            .map(|param| { chain![arena, param.name, ": Encode,"] })
-                    ),
-                    "{",
-                    chain![
+                KafkaParser::Composite { parsers, .. } => {
+                    let struct_doc = chain![
                         arena,
+                        "#[derive(Clone, Debug, PartialEq)]",
                         arena.line_(),
-                        "fn encode_len(&self) -> usize {",
+                        "pub struct ",
+                        inflector::cases::pascalcase::to_pascal_case(name),
+                        self.params_definition(),
+                        " {",
+                        KafkaParser::generate_fields(parsers, out, arena),
+                        arena.line_(),
+                        "}",
+                    ];
+
+                    let encode_doc = chain![
+                        arena,
+                        "impl",
+                        self.lifetime(),
+                        " crate::Encode for ",
+                        inflector::cases::pascalcase::to_pascal_case(name),
+                        self.lifetime(),
+                        " where ",
+                        arena.concat(
+                            self.non_lifetime_params()
+                                .map(|param| { chain![arena, param.name, ": Encode,"] })
+                        ),
+                        "{",
                         chain![
                             arena,
                             arena.line_(),
-                            if parsers.is_empty() {
-                                arena.text("0")
-                            } else {
+                            "fn encode_len(&self) -> usize {",
+                            chain![
+                                arena,
+                                arena.line_(),
+                                if parsers.is_empty() {
+                                    arena.text("0")
+                                } else {
+                                    arena.intersperse(
+                                        parsers.iter().map(|elem| {
+                                            chain![
+                                                arena,
+                                                "self.",
+                                                elem.snakecase_name(),
+                                                ".encode_len()",
+                                            ]
+                                        }),
+                                        arena.text(" + "),
+                                    )
+                                }
+                            ]
+                            .nest(4),
+                            "}",
+                            arena.line_(),
+                            "fn encode(&self, ",
+                            if parsers.is_empty() { "_" } else { "writer" },
+                            ": &mut impl Buffer) {",
+                            chain![
+                                arena,
+                                arena.line_(),
                                 arena.intersperse(
                                     parsers.iter().map(|elem| {
                                         chain![
                                             arena,
                                             "self.",
                                             elem.snakecase_name(),
-                                            ".encode_len()",
+                                            ".encode(writer);",
                                         ]
                                     }),
-                                    arena.text(" + "),
-                                )
-                            }
+                                    arena.line()
+                                ),
+                            ]
+                            .nest(4),
+                            "}",
                         ]
                         .nest(4),
                         "}",
-                        arena.line_(),
-                        "fn encode(&self, ",
-                        if parsers.is_empty() { "_" } else { "writer" },
-                        ": &mut impl Buffer) {",
-                        chain![
-                            arena,
-                            arena.line_(),
-                            arena.intersperse(
-                                parsers.iter().map(|elem| {
-                                    chain![
-                                        arena,
-                                        "self.",
-                                        elem.snakecase_name(),
-                                        ".encode(writer);",
-                                    ]
-                                }),
-                                arena.line()
-                            ),
-                        ]
-                        .nest(4),
-                        "}",
-                    ]
-                    .nest(4),
-                    "}",
-                ],
+                    ];
+
+                    chain![arena, struct_doc, arena.line_(), arena.line_(), encode_doc]
+                }
                 _ => arena.nil(),
             }
         }
