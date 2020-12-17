@@ -54,6 +54,10 @@ quick_error! {
                 })
             )
         }
+        Error(msg: ErrorCode) {
+            display("{}", msg)
+            from()
+        }
         Message(msg: String) {
             display("{}", msg)
             from()

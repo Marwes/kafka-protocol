@@ -5,11 +5,10 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use crate::{
     client::Client,
     parser::{
-        fetch_response, join_group_request, sync_group_request, FetchRequest, FetchResponse,
-        JoinGroupRequest, ListOffsetsRequest, SyncGroupRequest,
+        fetch_response, offset_fetch_request, FetchRequest, FetchResponse, FindCoordinatorRequest,
+        OffsetFetchRequest,
     },
-    Compression, Encode, Error, ErrorCode, RawRecords, Record, RecordBatch, Result,
-    FETCH_LATEST_OFFSET,
+    Compression, Error, ErrorCode, RawRecords, Record, RecordBatch, Result,
 };
 
 pub struct Consumer<I> {
@@ -85,107 +84,55 @@ impl Builder {
     ) -> Result<Consumer<tokio::net::TcpStream>> {
         let mut client = Client::connect(addr).await?;
 
-        let mut metadata = Vec::new();
-        crate::parser::protocol_metadata::ProtocolMetadata {
-            version: 0,
-            subscription: vec![&self.topic],
-            user_data: &[],
-        }
-        .encode(&mut metadata);
-
-        let response = {
-            macro_rules! join_group {
-                ($member_id: expr) => {
-                    client.join_group(JoinGroupRequest {
-                        group_id: &self.group_id,
-                        session_timeout_ms: 10000,
-                        rebalance_timeout_ms: 1000,
-                        member_id: $member_id,
-                        group_instance_id: None,
-                        protocol_type: "consumer",
-                        protocols: vec![
-                            join_group_request::Protocols {
-                                name: "test",
-                                metadata: &metadata,
-                            },
-                            join_group_request::Protocols {
-                                name: "",
-                                metadata: &metadata,
-                            },
-                        ],
-                    })
-                };
-            };
-
-            let response = join_group!("").await?;
-            // Newer versions requires a member_id in the request so we will first get an error
-            // after which we retry with the returned member_id
-            // https://cwiki.apache.org/confluence/display/KAFKA/KIP-394
-            if response.error_code == ErrorCode::MemberIdRequired {
-            } else if response.error_code != ErrorCode::None {
-                return Err(Error::JoinGroup(self.group_id, response.error_code));
-            }
-
-            let member_id = String::from(response.member_id);
-
-            let response = join_group!(&member_id).await?;
-            if response.error_code != ErrorCode::None {
-                return Err(Error::JoinGroup(self.group_id, response.error_code));
-            }
-            response
-        };
-        let member_id = String::from(response.member_id);
-
-        let member_assignments: Vec<_>;
-        let assignments = if response.leader == response.member_id {
-            member_assignments = response
-                .members
-                .iter()
-                .map(|member| {
-                    use crate::parser::member_assignment;
-
-                    let mut vec = Vec::<u8>::new();
-                    member_assignment::MemberAssignment {
-                        version: 0,
-                        partition_assignment: vec![member_assignment::Assignment {
-                            topic: &self.topic,
-                            partition: vec![0],
-                        }],
-                    }
-                    .encode(&mut vec);
-                    (String::from(member.member_id), vec)
-                })
-                .collect();
-            member_assignments
-                .iter()
-                .map(|(member_id, assignment)| sync_group_request::Assignments {
-                    member_id,
-                    assignment,
-                })
-                .collect()
-        } else {
-            vec![]
-        };
-
-        let generation_id = response.generation_id;
-
         let response = client
-            .sync_group(SyncGroupRequest {
-                group_id: &self.group_id,
-                member_id: &member_id,
-                generation_id,
-                group_instance_id: None,
-                assignments,
+            .find_coordinator(FindCoordinatorRequest {
+                key: &self.group_id,
+                key_type: 0,
             })
             .await?;
         if response.error_code != ErrorCode::None {
-            return Err(Error::JoinGroup(self.group_id, response.error_code));
+            return Err(Error::Error(response.error_code));
         }
+
+        let response = client
+            .offset_fetch(OffsetFetchRequest {
+                group_id: &self.group_id,
+                topics: vec![offset_fetch_request::Topics {
+                    topic: &self.topic,
+                    partitions: vec![0],
+                }],
+            })
+            .await?;
+        if response.error_code != ErrorCode::None {
+            return Err(Error::Error(response.error_code));
+        }
+
+        dbg!(&response);
+        assert!(response.responses.len() == 1);
+
+        let mut fetch_offsets = BTreeMap::<String, Vec<_>>::default();
+        for response in &response.responses {
+            let fetch_offsets = fetch_offsets.entry(response.topic.into()).or_default();
+            assert!(fetch_offsets.is_empty());
+            for partition_response in &response.partition_responses {
+                if partition_response.error_code != ErrorCode::None {
+                    return Err(Error::Error(partition_response.error_code));
+                }
+                let offset = if partition_response.offset == -1 {
+                    0
+                } else {
+                    partition_response.offset
+                };
+                fetch_offsets.push((partition_response.partition, offset));
+            }
+        }
+
+        let member_id = "".into();
 
         Ok(Consumer {
             client,
             member_id,
-            fetch_offsets: Default::default(),
+            fetch_offsets,
         })
     }
 }
@@ -256,11 +203,8 @@ impl<I> Consumer<I>
 where
     I: AsyncRead + AsyncWrite + std::marker::Unpin,
 {
-    pub async fn fetch<'a>(
-        &'a mut self,
-        topics: impl IntoIterator<Item = &'a str>,
-    ) -> Result<FetchedRecords<'a>> {
-        let response = self.fetch_raw(topics).await?;
+    pub async fn fetch<'a>(&'a mut self) -> Result<FetchedRecords<'a>> {
+        let response = self.fetch_raw().await?;
         Ok(FetchedRecords {
             response,
             responses: None,
@@ -271,74 +215,13 @@ where
 
     async fn fetch_raw<'a, 'b>(
         &'a mut self,
-        topics: impl IntoIterator<Item = &'b str>,
     ) -> Result<FetchResponse<'a, Option<RecordBatch<RawRecords<'a>>>>> {
-        let topics: Vec<_> = topics.into_iter().collect();
-        let mut fetch_topics = Vec::with_capacity(topics.len());
-        let mut list_topics = Vec::new();
-        for topic in &topics {
-            if let Some(fetch_offset) = self.fetch_offsets.get(*topic) {
-                fetch_topics.push(crate::parser::fetch_request::Topics {
-                    topic,
-                    partitions: mk_fetch_requests(fetch_offset),
-                });
-            } else {
-                list_topics.push(crate::parser::list_offsets_request::Topics {
-                    topic,
-                    partitions: vec![crate::parser::list_offsets_request::Partitions {
-                        partition: 0,
-                        timestamp: FETCH_LATEST_OFFSET,
-                        current_leader_epoch: 0,
-                    }],
-                });
-            }
-        }
-
-        if !list_topics.is_empty() {
-            let list_offsets = self
-                .client
-                .list_offsets(ListOffsetsRequest {
-                    replica_id: 0,
-                    isolation_level: 0,
-                    topics: list_topics,
-                })
-                .await?;
-            let errors = list_offsets
-                .responses
-                .iter()
-                .flat_map(|response| {
-                    response
-                        .partition_responses
-                        .iter()
-                        .filter(|partition_response| {
-                            partition_response.error_code != ErrorCode::None
-                        })
-                        .map(move |partition_response| {
-                            (
-                                response.topic.into(),
-                                partition_response.partition,
-                                partition_response.error_code,
-                            )
-                        })
-                })
-                .collect::<Vec<_>>();
-            if !errors.is_empty() {
-                return Err(Error::BrokerErrors("List offsets".into(), errors));
-            }
-
-            for response in list_offsets.responses {
-                let fetch_offset = self.fetch_offsets.entry(response.topic.into()).or_default();
-                for partition_response in &response.partition_responses {
-                    fetch_offset.push((partition_response.partition, partition_response.offset));
-                }
-                fetch_topics.push(crate::parser::fetch_request::Topics {
-                    topic: topics
-                        .iter()
-                        .find(|topic| **topic == response.topic)
-                        .unwrap(),
-                    partitions: mk_fetch_requests(fetch_offset),
-                });
-            }
+        let mut fetch_topics = Vec::with_capacity(self.fetch_offsets.len());
+        for (topic, fetch_offset) in &self.fetch_offsets {
+            fetch_topics.push(crate::parser::fetch_request::Topics {
+                topic,
+                partitions: mk_fetch_requests(fetch_offset),
+            });
         }
 
         self.client

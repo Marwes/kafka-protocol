@@ -321,13 +321,14 @@ mod tests {
         create_test_topic(&mut producer.client).await;
 
         let mut consumer = Consumer::builder()
+            .topic("test")
             .group_id("test")
             .build(kafka_host())
             .await
             .unwrap_or_else(|err| panic!("{}", err));
         {
             let mut fetch = consumer
-                .fetch(vec!["test"])
+                .fetch()
                 .await
                 .unwrap_or_else(|err| panic!("{}", err));
 
@@ -352,7 +353,7 @@ mod tests {
         eprintln!("{:#?}", produce_response);
 
         let mut fetch = consumer
-            .fetch(vec!["test"])
+            .fetch()
             .await
             .unwrap_or_else(|err| panic!("{}", err));
 
