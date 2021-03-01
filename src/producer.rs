@@ -357,7 +357,6 @@ mod tests {
         );
         eprintln!("{:#?}", produce_response);
 
-        consumer.update_fetch_offsets().await.unwrap(); // FIXME
         let mut fetch = consumer
             .fetch()
             .await

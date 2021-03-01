@@ -16,7 +16,13 @@ pub struct Consumer<I> {
     member_id: String,
     group_id: String,
     topic: String,
-    fetch_offsets: BTreeMap<String, Vec<(i32, i64)>>,
+    fetch_offsets: BTreeMap<String, Vec<FetchOffset>>,
+}
+
+struct FetchOffset {
+    partition: i32,
+    fetch_offset: i64,
+    current_leader_epoch: i32,
 }
 
 #[derive(Debug)]
@@ -217,7 +223,7 @@ where
             .await
     }
 
-    pub(crate) async fn update_fetch_offsets(&mut self) -> Result<()> {
+    async fn update_fetch_offsets(&mut self) -> Result<()> {
         let response = self
             .client
             .offset_fetch(OffsetFetchRequest {
@@ -238,7 +244,11 @@ where
             for partition_response in &response.partition_responses {
                 partition_response.error_code.into_result()?;
 
-                fetch_offsets.push((partition_response.partition, partition_response.offset));
+                fetch_offsets.push(FetchOffset {
+                    partition: partition_response.partition,
+                    fetch_offset: partition_response.offset,
+                    current_leader_epoch: partition_response.leader_epoch,
+                });
             }
         }
         self.fetch_offsets = fetch_offsets;
@@ -251,12 +261,18 @@ where
     }
 }
 
-fn mk_fetch_requests(fetch_offset: &[(i32, i64)]) -> Vec<crate::parser::fetch_request::Partitions> {
+fn mk_fetch_requests(
+    fetch_offset: &[FetchOffset],
+) -> Vec<crate::parser::fetch_request::Partitions> {
     fetch_offset
         .iter()
         .map(
-            |&(partition, fetch_offset)| crate::parser::fetch_request::Partitions {
-                current_leader_epoch: 0,
+            |&FetchOffset {
+                 partition,
+                 fetch_offset,
+                 current_leader_epoch,
+             }| crate::parser::fetch_request::Partitions {
+                current_leader_epoch,
                 fetch_offset,
                 log_start_offset: 0,
                 partition,
