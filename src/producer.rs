@@ -332,7 +332,12 @@ mod tests {
                 .await
                 .unwrap_or_else(|err| panic!("{}", err));
 
-            assert!(fetch.next_batch().is_none());
+            let batch = fetch.next_batch();
+            assert!(
+                batch.as_ref().err().and_then(|err| err.code())
+                    == Some(ErrorCode::OffsetOutOfRange)
+                    || batch.unwrap().is_none()
+            );
         }
 
         for &value in [&b"value"[..], b"value2", b"value3"].iter() {
@@ -352,13 +357,14 @@ mod tests {
         );
         eprintln!("{:#?}", produce_response);
 
+        consumer.update_fetch_offsets().await.unwrap(); // FIXME
         let mut fetch = consumer
             .fetch()
             .await
             .unwrap_or_else(|err| panic!("{}", err));
 
         let mut result = Vec::new();
-        while let Some(batch) = fetch.next_batch() {
+        while let Some(batch) = fetch.next_batch().unwrap() {
             result.extend(batch.map(|(topic, record)| {
                 assert_eq!(topic, "test");
                 (

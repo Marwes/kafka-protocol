@@ -69,6 +69,15 @@ quick_error! {
     }
 }
 
+impl Error {
+    pub(crate) fn code(&self) -> Option<ErrorCode> {
+        match self {
+            Self::Error(code) => Some(*code),
+            _ => None,
+        }
+    }
+}
+
 fn be_i8<'i, I>() -> impl Parser<I, Output = i8>
 where
     I: RangeStream<Token = u8, Range = &'i [u8]>,
@@ -878,5 +887,15 @@ pub enum Compression {
 impl Default for Compression {
     fn default() -> Self {
         Compression::None
+    }
+}
+
+impl ErrorCode {
+    pub(crate) fn into_result(self) -> Result<()> {
+        if self == ErrorCode::None {
+            Ok(())
+        } else {
+            Err(Error::from(self))
+        }
     }
 }

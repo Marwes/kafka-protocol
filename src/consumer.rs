@@ -8,15 +8,18 @@ use crate::{
         fetch_response, offset_fetch_request, FetchRequest, FetchResponse, FindCoordinatorRequest,
         OffsetFetchRequest,
     },
-    Compression, Error, ErrorCode, RawRecords, Record, RecordBatch, Result,
+    Compression, RawRecords, Record, RecordBatch, Result,
 };
 
 pub struct Consumer<I> {
     client: Client<I>,
     member_id: String,
+    group_id: String,
+    topic: String,
     fetch_offsets: BTreeMap<String, Vec<(i32, i64)>>,
 }
 
+#[derive(Debug)]
 pub(crate) struct Decoder {
     #[cfg(feature = "snap")]
     snap: snap::raw::Decoder,
@@ -90,49 +93,16 @@ impl Builder {
                 key_type: 0,
             })
             .await?;
-        if response.error_code != ErrorCode::None {
-            return Err(Error::Error(response.error_code));
-        }
-
-        let response = client
-            .offset_fetch(OffsetFetchRequest {
-                group_id: &self.group_id,
-                topics: vec![offset_fetch_request::Topics {
-                    topic: &self.topic,
-                    partitions: vec![0],
-                }],
-            })
-            .await?;
-        if response.error_code != ErrorCode::None {
-            return Err(Error::Error(response.error_code));
-        }
-
-        dbg!(&response);
-        assert!(response.responses.len() == 1);
-
-        let mut fetch_offsets = BTreeMap::<String, Vec<_>>::default();
-        for response in &response.responses {
-            let fetch_offsets = fetch_offsets.entry(response.topic.into()).or_default();
-            assert!(fetch_offsets.is_empty());
-            for partition_response in &response.partition_responses {
-                if partition_response.error_code != ErrorCode::None {
-                    return Err(Error::Error(partition_response.error_code));
-                }
-                let offset = if partition_response.offset == -1 {
-                    0
-                } else {
-                    partition_response.offset
-                };
-                fetch_offsets.push((partition_response.partition, offset));
-            }
-        }
+        response.error_code.into_result()?;
 
         let member_id = "".into();
 
         Ok(Consumer {
+            fetch_offsets: Default::default(),
             client,
             member_id,
-            fetch_offsets,
+            group_id: self.group_id,
+            topic: self.topic,
         })
     }
 }
@@ -147,6 +117,7 @@ impl Consumer<tokio::net::TcpStream> {
     }
 }
 
+#[derive(Debug)]
 pub struct FetchedRecords<'a> {
     response: FetchResponse<'a, Option<RecordBatch<RawRecords<'a>>>>,
     responses: Option<fetch_response::Responses<'a, Option<RecordBatch<RawRecords<'a>>>>>,
@@ -156,11 +127,16 @@ pub struct FetchedRecords<'a> {
 }
 
 impl FetchedRecords<'_> {
-    pub fn next_batch(&mut self) -> Option<impl Iterator<Item = (&str, Record<'_>)>> {
+    pub fn next_batch(&mut self) -> Result<Option<impl Iterator<Item = (&str, Record<'_>)>>> {
         let (topic, record_batch) = 'outer: loop {
             if let Some(responses) = &mut self.responses {
                 loop {
                     if let Some(partition_responses) = &mut self.partition_responses {
+                        partition_responses
+                            .partition_header
+                            .error_code
+                            .into_result()?;
+
                         if let Some(record_set) = partition_responses.record_set.take() {
                             break 'outer (responses.topic, record_set);
                         }
@@ -174,20 +150,17 @@ impl FetchedRecords<'_> {
 
             self.responses = self.response.responses.pop();
             if self.responses.is_none() {
-                return None;
+                return Ok(None);
             }
         };
         use combine::Parser;
-        let mut input = self
-            .decoder
-            .decompress(
-                record_batch.attributes.compression(),
-                record_batch.records.bytes,
-            )
-            .unwrap();
+        let mut input = self.decoder.decompress(
+            record_batch.attributes.compression(),
+            record_batch.records.bytes,
+        )?;
         // TODO unwraps
         let mut count = usize::try_from(record_batch.records.count).unwrap();
-        Some(std::iter::from_fn(move || {
+        Ok(Some(std::iter::from_fn(move || {
             if count == 0 {
                 return None;
             }
@@ -195,7 +168,7 @@ impl FetchedRecords<'_> {
             let (record, rest) = crate::parser::record().parse(input).unwrap();
             input = rest;
             Some((topic, Record::from(record)))
-        }))
+        })))
     }
 }
 
@@ -216,6 +189,9 @@ where
     async fn fetch_raw<'a, 'b>(
         &'a mut self,
     ) -> Result<FetchResponse<'a, Option<RecordBatch<RawRecords<'a>>>>> {
+        if self.fetch_offsets.is_empty() {
+            self.update_fetch_offsets().await?;
+        }
         let mut fetch_topics = Vec::with_capacity(self.fetch_offsets.len());
         for (topic, fetch_offset) in &self.fetch_offsets {
             fetch_topics.push(crate::parser::fetch_request::Topics {
@@ -223,6 +199,7 @@ where
                 partitions: mk_fetch_requests(fetch_offset),
             });
         }
+        dbg!(&fetch_topics);
 
         self.client
             .fetch(FetchRequest {
@@ -238,6 +215,35 @@ where
                 topics: fetch_topics,
             })
             .await
+    }
+
+    pub(crate) async fn update_fetch_offsets(&mut self) -> Result<()> {
+        let response = self
+            .client
+            .offset_fetch(OffsetFetchRequest {
+                group_id: &self.group_id,
+                topics: vec![offset_fetch_request::Topics {
+                    topic: &self.topic,
+                    partitions: vec![0],
+                }],
+            })
+            .await?;
+        response.error_code.into_result()?;
+
+        let mut fetch_offsets = BTreeMap::<String, Vec<_>>::default();
+        dbg!(&response);
+        for response in &response.responses {
+            let fetch_offsets = fetch_offsets.entry(response.topic.into()).or_default();
+            assert!(fetch_offsets.is_empty());
+            for partition_response in &response.partition_responses {
+                partition_response.error_code.into_result()?;
+
+                fetch_offsets.push((partition_response.partition, partition_response.offset));
+            }
+        }
+        self.fetch_offsets = fetch_offsets;
+
+        Ok(())
     }
 
     pub fn commit(&mut self) -> io::Result<()> {
