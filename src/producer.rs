@@ -323,6 +323,7 @@ mod tests {
         let mut consumer = Consumer::builder()
             .topic("test")
             .group_id("test")
+            .client_id("test-consumer".to_string())
             .build(kafka_host())
             .await
             .unwrap_or_else(|err| panic!("{}", err));
@@ -332,7 +333,12 @@ mod tests {
                 .await
                 .unwrap_or_else(|err| panic!("{}", err));
 
-            assert!(fetch.next_batch().is_none());
+            let batch = fetch.next_batch();
+            assert!(
+                batch.as_ref().err().and_then(|err| err.code())
+                    == Some(ErrorCode::OffsetOutOfRange)
+                    || batch.unwrap().is_none()
+            );
         }
 
         for &value in [&b"value"[..], b"value2", b"value3"].iter() {
@@ -358,7 +364,7 @@ mod tests {
             .unwrap_or_else(|err| panic!("{}", err));
 
         let mut result = Vec::new();
-        while let Some(batch) = fetch.next_batch() {
+        while let Some(batch) = fetch.next_batch().unwrap() {
             result.extend(batch.map(|(topic, record)| {
                 assert_eq!(topic, "test");
                 (

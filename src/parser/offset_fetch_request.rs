@@ -34,7 +34,7 @@ impl<'i> crate::Encode for OffsetFetchRequest<'i> {
     }
 }
 
-pub const VERSION: i16 = 5;
+pub const VERSION: i16 = 0;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Topics<'i> {

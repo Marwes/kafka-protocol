@@ -3,20 +3,31 @@ use std::{collections::BTreeMap, convert::TryFrom, io, time::Duration};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::{
-    client::Client,
+    client::{self, Client},
+    error::ErrorCode,
     parser::{
-        fetch_response, offset_fetch_request, FetchRequest, FetchResponse, FindCoordinatorRequest,
-        OffsetFetchRequest,
+        fetch_response, join_group_request, offset_fetch_request, sync_group_request,
+        DescribeGroupsRequest, FetchRequest, FetchResponse, FindCoordinatorRequest,
+        JoinGroupRequest, MetadataRequest, OffsetFetchRequest, SyncGroupRequest,
     },
-    Compression, Error, ErrorCode, RawRecords, Record, RecordBatch, Result,
+    Compression, RawRecords, Record, RecordBatch, Result,
 };
 
 pub struct Consumer<I> {
     client: Client<I>,
     member_id: String,
-    fetch_offsets: BTreeMap<String, Vec<(i32, i64)>>,
+    group_id: String,
+    topic: String,
+    fetch_offsets: BTreeMap<String, Vec<FetchOffset>>,
 }
 
+struct FetchOffset {
+    partition: i32,
+    fetch_offset: i64,
+    current_leader_epoch: i32,
+}
+
+#[derive(Debug)]
 pub(crate) struct Decoder {
     #[cfg(feature = "snap")]
     snap: snap::raw::Decoder,
@@ -61,6 +72,7 @@ impl Decoder {
 pub struct Builder {
     group_id: String,
     topic: String,
+    client_builder: client::Builder,
 }
 
 impl Builder {
@@ -78,11 +90,32 @@ impl Builder {
         self
     }
 
+    pub fn client_id(mut self, client_id: impl Into<Option<String>>) -> Self {
+        self.client_builder = self.client_builder.client_id(client_id);
+        self
+    }
+
     pub async fn build(
         self,
         addr: impl tokio::net::ToSocketAddrs,
     ) -> Result<Consumer<tokio::net::TcpStream>> {
-        let mut client = Client::connect(addr).await?;
+        let mut client = self.client_builder.connect(addr).await?;
+
+        let response = client
+            .metadata(MetadataRequest {
+                allow_auto_topic_creation: true,
+                include_cluster_authorized_operations: false,
+                include_topic_authorized_operations: false,
+                topics: vec![&self.topic],
+            })
+            .await?;
+        dbg!(&response);
+        for topic in &response.topics {
+            topic.error_code.into_result()?;
+            for partition in &topic.partitions {
+                partition.error_code.into_result()?;
+            }
+        }
 
         let response = client
             .find_coordinator(FindCoordinatorRequest {
@@ -90,49 +123,90 @@ impl Builder {
                 key_type: 0,
             })
             .await?;
-        if response.error_code != ErrorCode::None {
-            return Err(Error::Error(response.error_code));
+
+        dbg!(&response);
+        response.error_code.into_result()?;
+
+        let response = client
+            .describe_groups(DescribeGroupsRequest {
+                groups: vec![&self.group_id[..]],
+                include_authorized_operations: false,
+            })
+            .await?;
+        for group in &response.groups {
+            group.error_code.into_result()?;
+        }
+        dbg!(&response);
+
+        macro_rules! join_group {
+            ($member_id: expr) => {
+                client
+                    .join_group(JoinGroupRequest {
+                        group_id: &self.group_id,
+                        group_instance_id: None,
+                        member_id: $member_id,
+                        protocol_type: "testing",
+                        protocols: vec![join_group_request::Protocols {
+                            name: "testing",
+                            metadata: Default::default(),
+                        }],
+                        rebalance_timeout_ms: 1000,
+                        session_timeout_ms: 10000,
+                    })
+                    .await
+            };
+        }
+
+        let response = join_group!("")?;
+        let response = if response.error_code == ErrorCode::MemberIdRequired {
+            let member_id = response.member_id.to_owned();
+            join_group!(&member_id)?
+        } else {
+            response
+        };
+        dbg!(&response);
+        response.error_code.into_result()?;
+
+        let member_id = response.member_id.to_owned();
+        if member_id == response.leader {
+            let generation_id = response.generation_id;
+            let response = client
+                .sync_group(SyncGroupRequest {
+                    assignments: vec![sync_group_request::Assignments {
+                        member_id: &member_id,
+                        assignment: b"testing",
+                    }],
+                    generation_id,
+                    group_id: &self.group_id,
+                    group_instance_id: None,
+                    member_id: &member_id,
+                })
+                .await?;
+
+            dbg!(&response);
+            response.error_code.into_result()?;
         }
 
         let response = client
-            .offset_fetch(OffsetFetchRequest {
-                group_id: &self.group_id,
-                topics: vec![offset_fetch_request::Topics {
-                    topic: &self.topic,
-                    partitions: vec![0],
-                }],
+            .describe_groups(DescribeGroupsRequest {
+                groups: vec![&self.group_id[..]],
+                include_authorized_operations: false,
             })
             .await?;
-        if response.error_code != ErrorCode::None {
-            return Err(Error::Error(response.error_code));
+        for group in &response.groups {
+            group.error_code.into_result()?;
         }
-
         dbg!(&response);
-        assert!(response.responses.len() == 1);
 
-        let mut fetch_offsets = BTreeMap::<String, Vec<_>>::default();
-        for response in &response.responses {
-            let fetch_offsets = fetch_offsets.entry(response.topic.into()).or_default();
-            assert!(fetch_offsets.is_empty());
-            for partition_response in &response.partition_responses {
-                if partition_response.error_code != ErrorCode::None {
-                    return Err(Error::Error(partition_response.error_code));
-                }
-                let offset = if partition_response.offset == -1 {
-                    0
-                } else {
-                    partition_response.offset
-                };
-                fetch_offsets.push((partition_response.partition, offset));
-            }
-        }
-
-        let member_id = "".into();
+        // let coordinator_client =
+        //     Client::connect((response.host, u16::try_from(response.port).unwrap())).await?;
 
         Ok(Consumer {
+            fetch_offsets: Default::default(),
             client,
             member_id,
-            fetch_offsets,
+            group_id: self.group_id,
+            topic: self.topic,
         })
     }
 }
@@ -147,6 +221,7 @@ impl Consumer<tokio::net::TcpStream> {
     }
 }
 
+#[derive(Debug)]
 pub struct FetchedRecords<'a> {
     response: FetchResponse<'a, Option<RecordBatch<RawRecords<'a>>>>,
     responses: Option<fetch_response::Responses<'a, Option<RecordBatch<RawRecords<'a>>>>>,
@@ -156,11 +231,16 @@ pub struct FetchedRecords<'a> {
 }
 
 impl FetchedRecords<'_> {
-    pub fn next_batch(&mut self) -> Option<impl Iterator<Item = (&str, Record<'_>)>> {
+    pub fn next_batch(&mut self) -> Result<Option<impl Iterator<Item = (&str, Record<'_>)>>> {
         let (topic, record_batch) = 'outer: loop {
             if let Some(responses) = &mut self.responses {
                 loop {
                     if let Some(partition_responses) = &mut self.partition_responses {
+                        partition_responses
+                            .partition_header
+                            .error_code
+                            .into_result()?;
+
                         if let Some(record_set) = partition_responses.record_set.take() {
                             break 'outer (responses.topic, record_set);
                         }
@@ -174,20 +254,17 @@ impl FetchedRecords<'_> {
 
             self.responses = self.response.responses.pop();
             if self.responses.is_none() {
-                return None;
+                return Ok(None);
             }
         };
         use combine::Parser;
-        let mut input = self
-            .decoder
-            .decompress(
-                record_batch.attributes.compression(),
-                record_batch.records.bytes,
-            )
-            .unwrap();
+        let mut input = self.decoder.decompress(
+            record_batch.attributes.compression(),
+            record_batch.records.bytes,
+        )?;
         // TODO unwraps
         let mut count = usize::try_from(record_batch.records.count).unwrap();
-        Some(std::iter::from_fn(move || {
+        Ok(Some(std::iter::from_fn(move || {
             if count == 0 {
                 return None;
             }
@@ -195,7 +272,7 @@ impl FetchedRecords<'_> {
             let (record, rest) = crate::parser::record().parse(input).unwrap();
             input = rest;
             Some((topic, Record::from(record)))
-        }))
+        })))
     }
 }
 
@@ -218,11 +295,28 @@ where
     ) -> Result<FetchResponse<'a, Option<RecordBatch<RawRecords<'a>>>>> {
         let mut fetch_topics = Vec::with_capacity(self.fetch_offsets.len());
         for (topic, fetch_offset) in &self.fetch_offsets {
-            fetch_topics.push(crate::parser::fetch_request::Topics {
-                topic,
-                partitions: mk_fetch_requests(fetch_offset),
-            });
+            let partitions = mk_fetch_requests(fetch_offset);
+            if !partitions.is_empty() {
+                fetch_topics.push(crate::parser::fetch_request::Topics { topic, partitions });
+            }
         }
+        let fetch_topics = if fetch_topics.is_empty() {
+            drop(fetch_topics);
+            self.update_fetch_offsets().await?;
+
+            let mut fetch_topics = Vec::with_capacity(self.fetch_offsets.len());
+            for (topic, fetch_offset) in &self.fetch_offsets {
+                let partitions = mk_fetch_requests(fetch_offset);
+                if !partitions.is_empty() {
+                    fetch_topics.push(crate::parser::fetch_request::Topics { topic, partitions });
+                }
+            }
+            fetch_topics
+        } else {
+            fetch_topics
+        };
+
+        dbg!(&fetch_topics);
 
         self.client
             .fetch(FetchRequest {
@@ -240,19 +334,58 @@ where
             .await
     }
 
+    async fn update_fetch_offsets(&mut self) -> Result<()> {
+        let response = self
+            .client
+            .offset_fetch(OffsetFetchRequest {
+                group_id: "",
+                topics: vec![offset_fetch_request::Topics {
+                    topic: &self.topic,
+                    partitions: vec![0],
+                }],
+            })
+            .await?;
+
+        let mut fetch_offsets = BTreeMap::<String, Vec<_>>::default();
+        dbg!(&response);
+        for response in &response.responses {
+            let fetch_offsets = fetch_offsets.entry(response.topic.into()).or_default();
+            assert!(fetch_offsets.is_empty());
+            for partition_response in &response.partition_responses {
+                partition_response.error_code.into_result()?;
+
+                fetch_offsets.push(FetchOffset {
+                    partition: partition_response.partition,
+                    fetch_offset: partition_response.offset,
+                    current_leader_epoch: -1,
+                });
+            }
+        }
+        self.fetch_offsets = fetch_offsets;
+
+        Ok(())
+    }
+
     pub fn commit(&mut self) -> io::Result<()> {
         Ok(())
     }
 }
 
-fn mk_fetch_requests(fetch_offset: &[(i32, i64)]) -> Vec<crate::parser::fetch_request::Partitions> {
+fn mk_fetch_requests(
+    fetch_offset: &[FetchOffset],
+) -> Vec<crate::parser::fetch_request::Partitions> {
     fetch_offset
         .iter()
+        .filter(|fetch_offset| fetch_offset.fetch_offset != -1)
         .map(
-            |&(partition, fetch_offset)| crate::parser::fetch_request::Partitions {
-                current_leader_epoch: 0,
+            |&FetchOffset {
+                 partition,
+                 fetch_offset,
+                 current_leader_epoch,
+             }| crate::parser::fetch_request::Partitions {
+                current_leader_epoch,
                 fetch_offset,
-                log_start_offset: 0,
+                log_start_offset: -1,
                 partition,
                 partition_max_bytes: 1024 * 128,
             },

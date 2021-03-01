@@ -12,15 +12,46 @@ pub struct Client<I> {
     io: I,
     buf: Vec<u8>,
     correlation_id: i32,
+    client_id: Option<String>,
 }
 
-impl Client<tokio::net::TcpStream> {
-    pub async fn connect(addr: impl tokio::net::ToSocketAddrs) -> io::Result<Self> {
-        Ok(Self {
+#[derive(Default)]
+pub struct Builder {
+    client_id: Option<String>,
+}
+
+impl Builder {
+    pub fn new() -> Self {
+        Builder::default()
+    }
+
+    pub fn client_id(mut self, client_id: impl Into<Option<String>>) -> Self {
+        self.client_id = client_id.into();
+        self
+    }
+
+    pub async fn connect(
+        self,
+        addr: impl tokio::net::ToSocketAddrs,
+    ) -> io::Result<Client<tokio::net::TcpStream>> {
+        let Self { client_id } = self;
+
+        Ok(Client {
             io: tokio::net::TcpStream::connect(addr).await?,
             buf: Vec::new(),
             correlation_id: 0,
+            client_id,
         })
+    }
+}
+
+impl Client<tokio::net::TcpStream> {
+    pub fn builder() -> Builder {
+        Builder::new()
+    }
+
+    pub async fn connect(addr: impl tokio::net::ToSocketAddrs) -> io::Result<Self> {
+        Builder::default().connect(addr).await
     }
 }
 
@@ -48,7 +79,7 @@ where
                 api_key,
                 api_version,
                 correlation_id: self.correlation_id,
-                client_id: None,
+                client_id: self.client_id.as_ref().map(|s| &s[..]),
             };
             self.correlation_id += 1;
 
@@ -122,7 +153,7 @@ pub(crate) fn mk_parse_error(
 pub(crate) mod tests {
     use super::*;
 
-    use std::{str, time::Duration};
+    use std::{collections::HashMap, str, time::Duration};
 
     use crate::{parser::*, Acks, ErrorCode, Record, RecordBatch, FETCH_LATEST_OFFSET};
 
@@ -130,17 +161,33 @@ pub(crate) mod tests {
     use std::sync::Mutex;
     pub static KAFKA_LOCK: Lazy<Mutex<()>> = Lazy::new(Mutex::default);
 
+    const HOSTS: once_cell::sync::Lazy<HashMap<u16, String>> = once_cell::sync::Lazy::new(|| {
+        let stdout = std::process::Command::new("docker")
+            .args(&["port", "kafka-protocol_kafka_1"])
+            .output()
+            .expect("kafka_host")
+            .stdout;
+        let lines = std::str::from_utf8(&stdout).unwrap();
+        lines
+            .lines()
+            .map(|line| {
+                let mut iter = line.split(" -> ");
+                (
+                    iter.next()
+                        .unwrap()
+                        .split('/')
+                        .next()
+                        .unwrap()
+                        .parse()
+                        .unwrap(),
+                    iter.next().unwrap().into(),
+                )
+            })
+            .collect()
+    });
+
     pub fn kafka_host() -> String {
-        std::str::from_utf8(
-            &std::process::Command::new("docker")
-                .args(&["port", "kafka-protocol_kafka_1", "9094/tcp"])
-                .output()
-                .expect("kafka_host")
-                .stdout,
-        )
-        .unwrap()
-        .trim()
-        .into()
+        HOSTS[&9094].clone()
     }
 
     pub async fn create_test_topic(client: &mut Client<tokio::net::TcpStream>) {
