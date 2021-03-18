@@ -4,12 +4,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::{
     client::{self, Client},
-    error::ErrorCode,
-    parser::{
-        fetch_response, join_group_request, offset_fetch_request, sync_group_request,
-        DescribeGroupsRequest, FetchRequest, FetchResponse, FindCoordinatorRequest,
-        JoinGroupRequest, MetadataRequest, OffsetFetchRequest, SyncGroupRequest,
-    },
+    parser::*,
     Compression, RawRecords, Record, RecordBatch, Result,
 };
 
@@ -138,66 +133,7 @@ impl Builder {
         }
         dbg!(&response);
 
-        macro_rules! join_group {
-            ($member_id: expr) => {
-                client
-                    .join_group(JoinGroupRequest {
-                        group_id: &self.group_id,
-                        group_instance_id: None,
-                        member_id: $member_id,
-                        protocol_type: "testing",
-                        protocols: vec![join_group_request::Protocols {
-                            name: "testing",
-                            metadata: Default::default(),
-                        }],
-                        rebalance_timeout_ms: 1000,
-                        session_timeout_ms: 10000,
-                    })
-                    .await
-            };
-        }
-
-        let response = join_group!("")?;
-        let response = if response.error_code == ErrorCode::MemberIdRequired {
-            let member_id = response.member_id.to_owned();
-            join_group!(&member_id)?
-        } else {
-            response
-        };
-        dbg!(&response);
-        response.error_code.into_result()?;
-
-        let member_id = response.member_id.to_owned();
-        if member_id == response.leader {
-            let generation_id = response.generation_id;
-            let response = client
-                .sync_group(SyncGroupRequest {
-                    assignments: vec![sync_group_request::Assignments {
-                        member_id: &member_id,
-                        assignment: b"testing",
-                    }],
-                    generation_id,
-                    group_id: &self.group_id,
-                    group_instance_id: None,
-                    member_id: &member_id,
-                })
-                .await?;
-
-            dbg!(&response);
-            response.error_code.into_result()?;
-        }
-
-        let response = client
-            .describe_groups(DescribeGroupsRequest {
-                groups: vec![&self.group_id[..]],
-                include_authorized_operations: false,
-            })
-            .await?;
-        for group in &response.groups {
-            group.error_code.into_result()?;
-        }
-        dbg!(&response);
-
+        let member_id = Default::default();
         // let coordinator_client =
         //     Client::connect((response.host, u16::try_from(response.port).unwrap())).await?;
 
@@ -337,11 +273,16 @@ where
     async fn update_fetch_offsets(&mut self) -> Result<()> {
         let response = self
             .client
-            .offset_fetch(OffsetFetchRequest {
-                group_id: "",
-                topics: vec![offset_fetch_request::Topics {
+            .list_offsets(ListOffsetsRequest {
+                replica_id: -1,
+                isolation_level: 0,
+                topics: vec![list_offsets_request::Topics {
                     topic: &self.topic,
-                    partitions: vec![0],
+                    partitions: vec![list_offsets_request::Partitions {
+                        partition: 0,
+                        current_leader_epoch: -1,
+                        timestamp: -1, // latest
+                    }],
                 }],
             })
             .await?;
