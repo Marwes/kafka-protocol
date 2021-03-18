@@ -10,7 +10,9 @@ use crate::{
 
 pub struct Consumer<I> {
     client: Client<I>,
+    #[allow(unused)]
     member_id: String,
+    #[allow(unused)]
     group_id: String,
     topic: String,
     fetch_offsets: BTreeMap<String, Vec<FetchOffset>>,

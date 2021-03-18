@@ -70,6 +70,7 @@ quick_error! {
 }
 
 impl Error {
+    #[allow(unused)]
     pub(crate) fn code(&self) -> Option<ErrorCode> {
         match self {
             Self::Error(code) => Some(*code),
