@@ -305,6 +305,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "snap")]
     async fn produce_and_fetch_snappy() {
         let mut producer = Producer::builder()
             .compression(Compression::Snappy)
@@ -416,6 +417,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "snap")]
     async fn encode_decode_roundtrip_snappy() {
         encode_decode_roundtrip(Compression::Snappy).await;
     }
