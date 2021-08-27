@@ -241,7 +241,7 @@ mod regenerate {
         parser: KafkaParser<'i>,
     }
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq)]
     struct Rule<'i> {
         name: &'i str,
         version: Option<i32>,
@@ -836,9 +836,6 @@ mod regenerate {
     }
 
     fn merge_rule<'a>(mut l_rule: Rule<'a>, r_rule: Rule<'a>) -> Rule<'a> {
-        if true {
-            return r_rule;
-        }
         if l_rule == r_rule {
             return l_rule;
         }
@@ -854,8 +851,12 @@ mod regenerate {
                     if l == r {
                         production.push(l.clone());
                     } else {
-                        while r_iter.peek().is_some() && r_iter.peek() != Some(&l) {
-                            production.push(r_iter.next().unwrap().clone());
+                        if r_iter.clone().find(|r| *r == l).is_some() {
+                            while r_iter.peek().is_some() && r_iter.peek() != Some(&l) {
+                                production.push(r_iter.next().unwrap().clone());
+                            }
+                        } else {
+                            production.push(r.clone());
                         }
                         production.push(l.clone());
                     }
@@ -867,10 +868,38 @@ mod regenerate {
 
             l_rule.production = production;
         }
-        for (l, r) in l_rule.inner.iter_mut().zip(r_rule.inner) {
-            match (l, r) {
-                (_, _) => (),
+
+        for l in l_rule.inner.iter_mut() {
+            if let Some(r) = r_rule.inner.iter().find(|r| r.name == l.name) {
+                *l = merge_rule(l.clone(), r.clone());
             }
+        }
+        {
+            let mut l_iter = l_rule.inner.iter().peekable();
+            let mut r_iter = r_rule.inner.iter().peekable();
+            let mut inner = Vec::new();
+
+            while let Some(l) = l_iter.next() {
+                if let Some(r) = r_iter.next() {
+                    if l == r {
+                        inner.push(l.clone());
+                    } else {
+                        if r_iter.clone().find(|r| *r == l).is_some() {
+                            while r_iter.peek().is_some() && r_iter.peek() != Some(&l) {
+                                inner.push(r_iter.next().unwrap().clone());
+                            }
+                        } else {
+                            inner.push(r.clone());
+                        }
+                        inner.push(l.clone());
+                    }
+                } else {
+                    inner.push(l.clone());
+                }
+            }
+            inner.extend(r_iter.cloned());
+
+            l_rule.inner = inner;
         }
 
         l_rule

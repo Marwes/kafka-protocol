@@ -17,4 +17,4 @@ impl crate::Encode for ListGroupsRequest {
     fn encode(&self, _: &mut impl Buffer) {}
 }
 
-pub const VERSION: i16 = 2;
+pub const VERSION: i16 = 0;

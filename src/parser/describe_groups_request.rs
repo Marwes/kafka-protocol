@@ -34,4 +34,4 @@ impl<'i> crate::Encode for DescribeGroupsRequest<'i> {
     }
 }
 
-pub const VERSION: i16 = 3;
+pub const VERSION: i16 = 0;

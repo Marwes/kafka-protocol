@@ -23,7 +23,6 @@ where
                         string().expected("config_name"),
                         nullable_string().expected("config_value"),
                         any().map(|b| b != 0).expected("read_only"),
-                        be_i8().expected("config_source"),
                         any().map(|b| b != 0).expected("is_sensitive"),
                         array(|| {
                             (
@@ -40,23 +39,27 @@ where
                                 )
                                 .expected("config_synonyms")
                         }),
+                        any().map(|b| b != 0).expected("is_default"),
+                        any().map(|b| b != 0).expected("is_sensitive"),
                     )
                         .map(
                             |(
                                 config_name,
                                 config_value,
                                 read_only,
-                                config_source,
                                 is_sensitive,
                                 config_synonyms,
+                                is_default,
+                                is_sensitive,
                             )| {
                                 ConfigEntries {
                                     config_name,
                                     config_value,
                                     read_only,
-                                    config_source,
                                     is_sensitive,
                                     config_synonyms,
+                                    is_default,
+                                    is_sensitive,
                                 }
                             },
                         )
@@ -99,7 +102,7 @@ impl<'i> crate::Encode for DescribeConfigsResponse<'i> {
     }
 }
 
-pub const VERSION: i16 = 2;
+pub const VERSION: i16 = 0;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConfigSynonyms<'i> {
@@ -126,9 +129,10 @@ pub struct ConfigEntries<'i> {
     pub config_name: &'i str,
     pub config_value: Option<&'i str>,
     pub read_only: bool,
-    pub config_source: i8,
     pub is_sensitive: bool,
     pub config_synonyms: Vec<ConfigSynonyms<'i>>,
+    pub is_default: bool,
+    pub is_sensitive: bool,
 }
 
 impl<'i> crate::Encode for ConfigEntries<'i> {
@@ -136,17 +140,19 @@ impl<'i> crate::Encode for ConfigEntries<'i> {
         self.config_name.encode_len()
             + self.config_value.encode_len()
             + self.read_only.encode_len()
-            + self.config_source.encode_len()
             + self.is_sensitive.encode_len()
             + self.config_synonyms.encode_len()
+            + self.is_default.encode_len()
+            + self.is_sensitive.encode_len()
     }
     fn encode(&self, writer: &mut impl Buffer) {
         self.config_name.encode(writer);
         self.config_value.encode(writer);
         self.read_only.encode(writer);
-        self.config_source.encode(writer);
         self.is_sensitive.encode(writer);
         self.config_synonyms.encode(writer);
+        self.is_default.encode(writer);
+        self.is_sensitive.encode(writer);
     }
 }
 

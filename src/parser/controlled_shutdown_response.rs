@@ -47,7 +47,7 @@ impl<'i> crate::Encode for ControlledShutdownResponse<'i> {
     }
 }
 
-pub const VERSION: i16 = 2;
+pub const VERSION: i16 = 0;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RemainingPartitions<'i> {

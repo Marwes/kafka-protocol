@@ -50,4 +50,4 @@ impl<'i> crate::Encode for SaslAuthenticateResponse<'i> {
     }
 }
 
-pub const VERSION: i16 = 1;
+pub const VERSION: i16 = 0;

@@ -26,10 +26,10 @@ where
                         nullable_string().expected("error_message"),
                         be_i8().expected("resource_type"),
                         string().expected("resource_name"),
-                        be_i8().expected("resource_pattern_type"),
                         string().expected("principal"),
                         string().expected("host"),
                         be_i8().expected("operation"),
+                        be_i8().expected("permission_type"),
                         be_i8().expected("permission_type"),
                     )
                         .map(
@@ -38,10 +38,10 @@ where
                                 error_message,
                                 resource_type,
                                 resource_name,
-                                resource_pattern_type,
                                 principal,
                                 host,
                                 operation,
+                                permission_type,
                                 permission_type,
                             )| {
                                 MatchingAcls {
@@ -49,10 +49,10 @@ where
                                     error_message,
                                     resource_type,
                                     resource_name,
-                                    resource_pattern_type,
                                     principal,
                                     host,
                                     operation,
+                                    permission_type,
                                     permission_type,
                                 }
                             },
@@ -92,7 +92,7 @@ impl<'i> crate::Encode for DeleteAclsResponse<'i> {
     }
 }
 
-pub const VERSION: i16 = 1;
+pub const VERSION: i16 = 0;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MatchingAcls<'i> {
@@ -100,10 +100,10 @@ pub struct MatchingAcls<'i> {
     pub error_message: Option<&'i str>,
     pub resource_type: i8,
     pub resource_name: &'i str,
-    pub resource_pattern_type: i8,
     pub principal: &'i str,
     pub host: &'i str,
     pub operation: i8,
+    pub permission_type: i8,
     pub permission_type: i8,
 }
 
@@ -113,10 +113,10 @@ impl<'i> crate::Encode for MatchingAcls<'i> {
             + self.error_message.encode_len()
             + self.resource_type.encode_len()
             + self.resource_name.encode_len()
-            + self.resource_pattern_type.encode_len()
             + self.principal.encode_len()
             + self.host.encode_len()
             + self.operation.encode_len()
+            + self.permission_type.encode_len()
             + self.permission_type.encode_len()
     }
     fn encode(&self, writer: &mut impl Buffer) {
@@ -124,10 +124,10 @@ impl<'i> crate::Encode for MatchingAcls<'i> {
         self.error_message.encode(writer);
         self.resource_type.encode(writer);
         self.resource_name.encode(writer);
-        self.resource_pattern_type.encode(writer);
         self.principal.encode(writer);
         self.host.encode(writer);
         self.operation.encode(writer);
+        self.permission_type.encode(writer);
         self.permission_type.encode(writer);
     }
 }

@@ -8,81 +8,52 @@ where
         be_i32().expected("replica_id"),
         be_i32().expected("max_wait_time"),
         be_i32().expected("min_bytes"),
-        be_i32().expected("max_bytes"),
         be_i8().expected("isolation_level"),
         be_i32().expected("session_id"),
         be_i32().expected("session_epoch"),
-        array(|| {
+        array(||
+        (
+            string().expected("topic"),
+            array(||
             (
-                string().expected("topic"),
-                array(|| {
-                    (
-                        be_i32().expected("partition"),
-                        be_i32().expected("current_leader_epoch"),
-                        be_i64().expected("fetch_offset"),
-                        be_i64().expected("log_start_offset"),
-                        be_i32().expected("partition_max_bytes"),
-                    )
-                        .map(
-                            |(
-                                partition,
-                                current_leader_epoch,
-                                fetch_offset,
-                                log_start_offset,
-                                partition_max_bytes,
-                            )| {
-                                Partitions {
-                                    partition,
-                                    current_leader_epoch,
-                                    fetch_offset,
-                                    log_start_offset,
-                                    partition_max_bytes,
-                                }
-                            },
-                        )
-                        .expected("partitions")
-                }),
-            )
-                .map(|(topic, partitions)| Topics { topic, partitions })
-                .expected("topics")
-        }),
-        array(|| {
+                be_i32().expected("partition"),
+                be_i32().expected("current_leader_epoch"),
+                be_i64().expected("fetch_offset"),
+                be_i64().expected("log_start_offset"),
+                be_i32().expected("partition_max_bytes"),
+            ).map(|(partition,current_leader_epoch,fetch_offset,log_start_offset,partition_max_bytes,)| {Partitions{
+            partition,current_leader_epoch,fetch_offset,log_start_offset,partition_max_bytes
+            }}).expected("partitions"),),
+        ).map(|(topic,partitions,)| {Topics{
+        topic,partitions
+        }}).expected("topics"),),
+        array(||
+        (
+            string().expected("topic"),
+            array(||
             (
-                string().expected("topic"),
-                array(|| be_i32().expected("partitions").expected("partitions")),
-            )
-                .map(|(topic, partitions)| ForgottenTopicsData { topic, partitions })
-                .expected("forgotten_topics_data")
-        }),
+                be_i32().expected("partition"),
+                be_i32().expected("current_leader_epoch"),
+                be_i64().expected("fetch_offset"),
+                be_i64().expected("log_start_offset"),
+                be_i32().expected("partition_max_bytes"),
+            ).map(|(partition,current_leader_epoch,fetch_offset,log_start_offset,partition_max_bytes,)| {Partitions{
+            partition,current_leader_epoch,fetch_offset,log_start_offset,partition_max_bytes
+            }}).expected("partitions"),),
+        ).map(|(topic,partitions,)| {Topics{
+        topic,partitions
+        }}).expected("topics"),),
+        array(||
+        (
+            string().expected("topic"),
+            array(||be_i32().expected("partitions").expected("partitions"),),
+        ).map(|(topic,partitions,)| {ForgottenTopicsData{
+        topic,partitions
+        }}).expected("forgotten_topics_data"),),
         string().expected("rack_id"),
-    )
-        .map(
-            |(
-                replica_id,
-                max_wait_time,
-                min_bytes,
-                max_bytes,
-                isolation_level,
-                session_id,
-                session_epoch,
-                topics,
-                forgotten_topics_data,
-                rack_id,
-            )| {
-                FetchRequest {
-                    replica_id,
-                    max_wait_time,
-                    min_bytes,
-                    max_bytes,
-                    isolation_level,
-                    session_id,
-                    session_epoch,
-                    topics,
-                    forgotten_topics_data,
-                    rack_id,
-                }
-            },
-        )
+    ).map(|(replica_id,max_wait_time,min_bytes,isolation_level,session_id,session_epoch,topics,topics,forgotten_topics_data,rack_id,)| {FetchRequest{
+    replica_id,max_wait_time,min_bytes,isolation_level,session_id,session_epoch,topics,topics,forgotten_topics_data,rack_id
+    }})
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -90,43 +61,55 @@ pub struct FetchRequest<'i> {
     pub replica_id: i32,
     pub max_wait_time: i32,
     pub min_bytes: i32,
-    pub max_bytes: i32,
     pub isolation_level: i8,
     pub session_id: i32,
     pub session_epoch: i32,
+    pub topics: Vec<Topics<'i>>,
     pub topics: Vec<Topics<'i>>,
     pub forgotten_topics_data: Vec<ForgottenTopicsData<'i>>,
     pub rack_id: &'i str,
 }
 
-impl<'i> crate::Encode for FetchRequest<'i> {
+impl<'i> crate::Encode for FetchRequest<'i> where {
     fn encode_len(&self) -> usize {
-        self.replica_id.encode_len()
-            + self.max_wait_time.encode_len()
-            + self.min_bytes.encode_len()
-            + self.max_bytes.encode_len()
-            + self.isolation_level.encode_len()
-            + self.session_id.encode_len()
-            + self.session_epoch.encode_len()
-            + self.topics.encode_len()
-            + self.forgotten_topics_data.encode_len()
-            + self.rack_id.encode_len()
-    }
+        self.replica_id.encode_len() + self.max_wait_time.encode_len() + self.min_bytes.encode_len() + self.isolation_level.encode_len() + self.session_id.encode_len() + self.session_epoch.encode_len() + self.topics.encode_len() + self.topics.encode_len() + self.forgotten_topics_data.encode_len() + self.rack_id.encode_len()}
     fn encode(&self, writer: &mut impl Buffer) {
         self.replica_id.encode(writer);
         self.max_wait_time.encode(writer);
         self.min_bytes.encode(writer);
-        self.max_bytes.encode(writer);
         self.isolation_level.encode(writer);
         self.session_id.encode(writer);
         self.session_epoch.encode(writer);
         self.topics.encode(writer);
+        self.topics.encode(writer);
         self.forgotten_topics_data.encode(writer);
-        self.rack_id.encode(writer);
-    }
-}
+        self.rack_id.encode(writer);}}
 
-pub const VERSION: i16 = 11;
+pub const VERSION: i16 = 0;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions {
@@ -137,22 +120,15 @@ pub struct Partitions {
     pub partition_max_bytes: i32,
 }
 
-impl crate::Encode for Partitions {
+impl crate::Encode for Partitions where {
     fn encode_len(&self) -> usize {
-        self.partition.encode_len()
-            + self.current_leader_epoch.encode_len()
-            + self.fetch_offset.encode_len()
-            + self.log_start_offset.encode_len()
-            + self.partition_max_bytes.encode_len()
-    }
+        self.partition.encode_len() + self.current_leader_epoch.encode_len() + self.fetch_offset.encode_len() + self.log_start_offset.encode_len() + self.partition_max_bytes.encode_len()}
     fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.current_leader_epoch.encode(writer);
         self.fetch_offset.encode(writer);
         self.log_start_offset.encode(writer);
-        self.partition_max_bytes.encode(writer);
-    }
-}
+        self.partition_max_bytes.encode(writer);}}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Topics<'i> {
@@ -160,15 +136,60 @@ pub struct Topics<'i> {
     pub partitions: Vec<Partitions>,
 }
 
-impl<'i> crate::Encode for Topics<'i> {
+impl<'i> crate::Encode for Topics<'i> where {
     fn encode_len(&self) -> usize {
-        self.topic.encode_len() + self.partitions.encode_len()
-    }
+        self.topic.encode_len() + self.partitions.encode_len()}
     fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
-        self.partitions.encode(writer);
-    }
+        self.partitions.encode(writer);}}
+
+
+
+
+
+
+
+
+
+
+
+
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Partitions {
+    pub partition: i32,
+    pub current_leader_epoch: i32,
+    pub fetch_offset: i64,
+    pub log_start_offset: i64,
+    pub partition_max_bytes: i32,
 }
+
+impl crate::Encode for Partitions where {
+    fn encode_len(&self) -> usize {
+        self.partition.encode_len() + self.current_leader_epoch.encode_len() + self.fetch_offset.encode_len() + self.log_start_offset.encode_len() + self.partition_max_bytes.encode_len()}
+    fn encode(&self, writer: &mut impl Buffer) {
+        self.partition.encode(writer);
+        self.current_leader_epoch.encode(writer);
+        self.fetch_offset.encode(writer);
+        self.log_start_offset.encode(writer);
+        self.partition_max_bytes.encode(writer);}}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Topics<'i> {
+    pub topic: &'i str,
+    pub partitions: Vec<Partitions>,
+}
+
+impl<'i> crate::Encode for Topics<'i> where {
+    fn encode_len(&self) -> usize {
+        self.topic.encode_len() + self.partitions.encode_len()}
+    fn encode(&self, writer: &mut impl Buffer) {
+        self.topic.encode(writer);
+        self.partitions.encode(writer);}}
+
+
+
+
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ForgottenTopicsData<'i> {
@@ -176,12 +197,11 @@ pub struct ForgottenTopicsData<'i> {
     pub partitions: Vec<i32>,
 }
 
-impl<'i> crate::Encode for ForgottenTopicsData<'i> {
+impl<'i> crate::Encode for ForgottenTopicsData<'i> where {
     fn encode_len(&self) -> usize {
-        self.topic.encode_len() + self.partitions.encode_len()
-    }
+        self.topic.encode_len() + self.partitions.encode_len()}
     fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
-        self.partitions.encode(writer);
-    }
-}
+        self.partitions.encode(writer);}}
+
+

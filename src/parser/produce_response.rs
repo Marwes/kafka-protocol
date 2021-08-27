@@ -5,54 +5,26 @@ where
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
     (
-        array(|| {
+        array(||
+        (
+            string().expected("topic"),
+            array(||
             (
-                string().expected("topic"),
-                array(|| {
-                    (
-                        be_i32().expected("partition"),
-                        be_i16()
-                            .and_then(|i| {
-                                ErrorCode::try_from(i)
-                                    .map_err(StreamErrorFor::<I>::unexpected_static_message)
-                            })
-                            .expected("error_code"),
-                        be_i64().expected("base_offset"),
-                        be_i64().expected("log_append_time"),
-                        be_i64().expected("log_start_offset"),
-                    )
-                        .map(
-                            |(
-                                partition,
-                                error_code,
-                                base_offset,
-                                log_append_time,
-                                log_start_offset,
-                            )| {
-                                PartitionResponses {
-                                    partition,
-                                    error_code,
-                                    base_offset,
-                                    log_append_time,
-                                    log_start_offset,
-                                }
-                            },
-                        )
-                        .expected("partition_responses")
-                }),
-            )
-                .map(|(topic, partition_responses)| Responses {
-                    topic,
-                    partition_responses,
-                })
-                .expected("responses")
-        }),
+                be_i32().expected("partition"),
+                be_i16().and_then(|i| ErrorCode::try_from(i).map_err(StreamErrorFor::<I>::unexpected_static_message)).expected("error_code"),
+                be_i64().expected("base_offset"),
+                be_i64().expected("log_append_time"),
+                be_i64().expected("log_start_offset"),
+            ).map(|(partition,error_code,base_offset,log_append_time,log_start_offset,)| {PartitionResponses{
+            partition,error_code,base_offset,log_append_time,log_start_offset
+            }}).expected("partition_responses"),),
+        ).map(|(topic,partition_responses,)| {Responses{
+        topic,partition_responses
+        }}).expected("responses"),),
         be_i32().expected("throttle_time_ms"),
-    )
-        .map(|(responses, throttle_time_ms)| ProduceResponse {
-            responses,
-            throttle_time_ms,
-        })
+    ).map(|(responses,throttle_time_ms,)| {ProduceResponse{
+    responses,throttle_time_ms
+    }})
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -61,17 +33,26 @@ pub struct ProduceResponse<'i> {
     pub throttle_time_ms: i32,
 }
 
-impl<'i> crate::Encode for ProduceResponse<'i> {
+impl<'i> crate::Encode for ProduceResponse<'i> where {
     fn encode_len(&self) -> usize {
-        self.responses.encode_len() + self.throttle_time_ms.encode_len()
-    }
+        self.responses.encode_len() + self.throttle_time_ms.encode_len()}
     fn encode(&self, writer: &mut impl Buffer) {
         self.responses.encode(writer);
-        self.throttle_time_ms.encode(writer);
-    }
-}
+        self.throttle_time_ms.encode(writer);}}
 
-pub const VERSION: i16 = 7;
+pub const VERSION: i16 = 0;
+
+
+
+
+
+
+
+
+
+
+
+
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PartitionResponses {
@@ -82,22 +63,15 @@ pub struct PartitionResponses {
     pub log_start_offset: i64,
 }
 
-impl crate::Encode for PartitionResponses {
+impl crate::Encode for PartitionResponses where {
     fn encode_len(&self) -> usize {
-        self.partition.encode_len()
-            + self.error_code.encode_len()
-            + self.base_offset.encode_len()
-            + self.log_append_time.encode_len()
-            + self.log_start_offset.encode_len()
-    }
+        self.partition.encode_len() + self.error_code.encode_len() + self.base_offset.encode_len() + self.log_append_time.encode_len() + self.log_start_offset.encode_len()}
     fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.error_code.encode(writer);
         self.base_offset.encode(writer);
         self.log_append_time.encode(writer);
-        self.log_start_offset.encode(writer);
-    }
-}
+        self.log_start_offset.encode(writer);}}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Responses<'i> {
@@ -105,12 +79,11 @@ pub struct Responses<'i> {
     pub partition_responses: Vec<PartitionResponses>,
 }
 
-impl<'i> crate::Encode for Responses<'i> {
+impl<'i> crate::Encode for Responses<'i> where {
     fn encode_len(&self) -> usize {
-        self.topic.encode_len() + self.partition_responses.encode_len()
-    }
+        self.topic.encode_len() + self.partition_responses.encode_len()}
     fn encode(&self, writer: &mut impl Buffer) {
         self.topic.encode(writer);
-        self.partition_responses.encode(writer);
-    }
-}
+        self.partition_responses.encode(writer);}}
+
+

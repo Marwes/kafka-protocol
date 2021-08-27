@@ -16,7 +16,21 @@ where
             (
                 be_i8().expected("resource_type"),
                 string().expected("resource_name"),
-                be_i8().expected("resource_pattern_type"),
+                array(|| {
+                    (
+                        string().expected("principal"),
+                        string().expected("host"),
+                        be_i8().expected("operation"),
+                        be_i8().expected("permission_type"),
+                    )
+                        .map(|(principal, host, operation, permission_type)| Acls {
+                            principal,
+                            host,
+                            operation,
+                            permission_type,
+                        })
+                        .expected("acls")
+                }),
                 array(|| {
                     (
                         string().expected("principal"),
@@ -33,14 +47,12 @@ where
                         .expected("acls")
                 }),
             )
-                .map(
-                    |(resource_type, resource_name, resource_pattern_type, acls)| Resources {
-                        resource_type,
-                        resource_name,
-                        resource_pattern_type,
-                        acls,
-                    },
-                )
+                .map(|(resource_type, resource_name, acls, acls)| Resources {
+                    resource_type,
+                    resource_name,
+                    acls,
+                    acls,
+                })
                 .expected("resources")
         }),
     )
@@ -77,7 +89,30 @@ impl<'i> crate::Encode for DescribeAclsResponse<'i> {
     }
 }
 
-pub const VERSION: i16 = 1;
+pub const VERSION: i16 = 0;
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Acls<'i> {
+    pub principal: &'i str,
+    pub host: &'i str,
+    pub operation: i8,
+    pub permission_type: i8,
+}
+
+impl<'i> crate::Encode for Acls<'i> {
+    fn encode_len(&self) -> usize {
+        self.principal.encode_len()
+            + self.host.encode_len()
+            + self.operation.encode_len()
+            + self.permission_type.encode_len()
+    }
+    fn encode(&self, writer: &mut impl Buffer) {
+        self.principal.encode(writer);
+        self.host.encode(writer);
+        self.operation.encode(writer);
+        self.permission_type.encode(writer);
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Acls<'i> {
@@ -106,7 +141,7 @@ impl<'i> crate::Encode for Acls<'i> {
 pub struct Resources<'i> {
     pub resource_type: i8,
     pub resource_name: &'i str,
-    pub resource_pattern_type: i8,
+    pub acls: Vec<Acls<'i>>,
     pub acls: Vec<Acls<'i>>,
 }
 
@@ -114,13 +149,13 @@ impl<'i> crate::Encode for Resources<'i> {
     fn encode_len(&self) -> usize {
         self.resource_type.encode_len()
             + self.resource_name.encode_len()
-            + self.resource_pattern_type.encode_len()
+            + self.acls.encode_len()
             + self.acls.encode_len()
     }
     fn encode(&self, writer: &mut impl Buffer) {
         self.resource_type.encode(writer);
         self.resource_name.encode(writer);
-        self.resource_pattern_type.encode(writer);
+        self.acls.encode(writer);
         self.acls.encode(writer);
     }
 }

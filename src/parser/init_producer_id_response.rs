@@ -47,4 +47,4 @@ impl crate::Encode for InitProducerIdResponse {
     }
 }
 
-pub const VERSION: i16 = 1;
+pub const VERSION: i16 = 0;

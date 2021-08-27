@@ -30,4 +30,4 @@ impl<'i> crate::Encode for LeaveGroupRequest<'i> {
     }
 }
 
-pub const VERSION: i16 = 2;
+pub const VERSION: i16 = 0;

@@ -16,13 +16,13 @@ where
                     (
                         be_i32().expected("partition"),
                         be_i64().expected("offset"),
-                        be_i32().expected("leader_epoch"),
+                        nullable_string().expected("metadata"),
                         nullable_string().expected("metadata"),
                     )
-                        .map(|(partition, offset, leader_epoch, metadata)| Partitions {
+                        .map(|(partition, offset, metadata, metadata)| Partitions {
                             partition,
                             offset,
-                            leader_epoch,
+                            metadata,
                             metadata,
                         })
                         .expected("partitions")
@@ -71,13 +71,13 @@ impl<'i> crate::Encode for TxnOffsetCommitRequest<'i> {
     }
 }
 
-pub const VERSION: i16 = 2;
+pub const VERSION: i16 = 0;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partitions<'i> {
     pub partition: i32,
     pub offset: i64,
-    pub leader_epoch: i32,
+    pub metadata: Option<&'i str>,
     pub metadata: Option<&'i str>,
 }
 
@@ -85,13 +85,13 @@ impl<'i> crate::Encode for Partitions<'i> {
     fn encode_len(&self) -> usize {
         self.partition.encode_len()
             + self.offset.encode_len()
-            + self.leader_epoch.encode_len()
+            + self.metadata.encode_len()
             + self.metadata.encode_len()
     }
     fn encode(&self, writer: &mut impl Buffer) {
         self.partition.encode(writer);
         self.offset.encode(writer);
-        self.leader_epoch.encode(writer);
+        self.metadata.encode(writer);
         self.metadata.encode(writer);
     }
 }

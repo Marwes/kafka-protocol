@@ -34,4 +34,4 @@ impl crate::Encode for AddOffsetsToTxnResponse {
     }
 }
 
-pub const VERSION: i16 = 1;
+pub const VERSION: i16 = 0;

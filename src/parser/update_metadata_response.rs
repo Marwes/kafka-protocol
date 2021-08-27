@@ -26,4 +26,4 @@ impl crate::Encode for UpdateMetadataResponse {
     }
 }
 
-pub const VERSION: i16 = 5;
+pub const VERSION: i16 = 0;

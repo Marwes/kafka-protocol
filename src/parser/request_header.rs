@@ -9,15 +9,9 @@ where
         be_i16().expected("api_version"),
         be_i32().expected("correlation_id"),
         nullable_string().expected("client_id"),
-    )
-        .map(
-            |(api_key, api_version, correlation_id, client_id)| RequestHeader {
-                api_key,
-                api_version,
-                correlation_id,
-                client_id,
-            },
-        )
+    ).map(|(api_key,api_version,correlation_id,client_id,)| {RequestHeader{
+    api_key,api_version,correlation_id,client_id
+    }})
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -28,17 +22,19 @@ pub struct RequestHeader<'i> {
     pub client_id: Option<&'i str>,
 }
 
-impl<'i> crate::Encode for RequestHeader<'i> {
+impl<'i> crate::Encode for RequestHeader<'i> where {
     fn encode_len(&self) -> usize {
-        self.api_key.encode_len()
-            + self.api_version.encode_len()
-            + self.correlation_id.encode_len()
-            + self.client_id.encode_len()
-    }
+        self.api_key.encode_len() + self.api_version.encode_len() + self.correlation_id.encode_len() + self.client_id.encode_len()}
     fn encode(&self, writer: &mut impl Buffer) {
         self.api_key.encode(writer);
         self.api_version.encode(writer);
         self.correlation_id.encode(writer);
-        self.client_id.encode(writer);
-    }
-}
+        self.client_id.encode(writer);}}
+
+
+
+
+
+
+
+

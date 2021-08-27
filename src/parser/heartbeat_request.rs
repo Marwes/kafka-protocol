@@ -43,4 +43,4 @@ impl<'i> crate::Encode for HeartbeatRequest<'i> {
     }
 }
 
-pub const VERSION: i16 = 3;
+pub const VERSION: i16 = 0;
